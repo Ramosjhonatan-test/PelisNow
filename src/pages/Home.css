@@ -1,0 +1,8 @@
+.home {
+  background-color: var(--bg-primary);
+  min-height: 100vh;
+}
+
+.rows-container {
+    padding-bottom: 50px;
+}

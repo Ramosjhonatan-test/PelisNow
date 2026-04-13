@@ -1,0 +1,78 @@
+:root {
+  --bg-primary: #0f1014;
+  --bg-secondary: #1a1b21;
+  --accent-color: #e50914; /* Rojo característico */
+  --accent-glow: rgba(229, 9, 20, 0.4);
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --glass-bg: rgba(25, 26, 32, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.08);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-primary);
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(229, 9, 20, 0.08), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(20, 20, 35, 0.5), transparent 25%);
+  background-attachment: fixed;
+  color: var(--text-primary);
+  font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Transiciones Globales de Página */
+.animate-fade-in {
+  animation: fadeInGlobal 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+@keyframes fadeInGlobal {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.section-padding {
+  padding: 0 4%;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #141414;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}

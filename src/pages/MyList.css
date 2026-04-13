@@ -1,0 +1,158 @@
+/* My List Page */
+.mylist-page {
+  min-height: 100vh;
+  padding-bottom: 60px;
+}
+
+/* Hero Header */
+.mylist-hero {
+  padding: 120px 5% 50px;
+  background: linear-gradient(to bottom, rgba(229, 9, 20, 0.15) 0%, var(--bg-primary) 100%);
+}
+
+.mylist-hero-content {
+  max-width: 800px;
+}
+
+.mylist-hero h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.heart-icon {
+  color: var(--accent-color);
+  font-size: 2rem;
+}
+
+.mylist-count {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.clear-all-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+}
+
+.clear-all-btn:hover {
+  background: rgba(229, 9, 20, 0.3);
+  border-color: var(--accent-color);
+  transform: translateY(-2px);
+}
+
+/* Movie Grid */
+.mylist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 25px;
+  padding: 0 5%;
+}
+
+.mylist-grid .movie-card {
+  width: 100%;
+  height: 100%;
+}
+
+.mylist-grid .movie-card img {
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Card Wrapper with Remove Button */
+.mylist-card-wrapper {
+  position: relative;
+}
+
+.remove-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: all 0.3s;
+  z-index: 5;
+}
+
+.mylist-card-wrapper:hover .remove-btn {
+  opacity: 1;
+}
+
+.remove-btn:hover {
+  background: var(--accent-color);
+  color: white;
+  transform: scale(1.15);
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+  animation: fadeIn 0.6s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.empty-icon-circle {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(229, 9, 20, 0.1);
+  border: 2px solid rgba(229, 9, 20, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  color: var(--accent-color);
+  margin-bottom: 1.5rem;
+}
+
+.empty-state h3 {
+  color: white;
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .mylist-hero { padding: 100px 4% 30px; }
+  .mylist-hero h1 { font-size: 1.8rem; }
+  .mylist-grid { padding: 0 4%; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}

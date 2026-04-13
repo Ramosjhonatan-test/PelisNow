@@ -1,0 +1,44 @@
+.movie-row {
+  margin: 40px 0;
+  padding-left: 50px;
+}
+
+.row-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #e5e5e5;
+  transition: all 0.3s ease;
+  display: inline-block;
+}
+
+.row-title:hover {
+  color: white;
+  text-shadow: 0 0 10px var(--accent-glow);
+  transform: translateX(5px);
+}
+
+.row-cards-container {
+  display: flex;
+  gap: 15px;
+  overflow-y: hidden;
+  overflow-x: auto;
+  padding: 20px 0;
+  padding-right: 50px; /* To prevent cutting off the last card shadow */
+}
+
+.row-cards-container::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .movie-row {
+    padding-left: 20px;
+  }
+  .row-cards-container {
+    padding-right: 20px;
+  }
+  .row-title {
+    font-size: 1.2rem;
+  }
+}

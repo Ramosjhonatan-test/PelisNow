@@ -1,0 +1,103 @@
+.discover-page {
+  padding-top: 100px;
+  min-height: 100vh;
+  padding-bottom: 50px;
+}
+
+.discover-header {
+  margin: 0 4% 40px;
+  padding: 30px;
+  border-radius: 20px;
+}
+
+.discover-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-size: 2rem;
+  margin-bottom: 25px;
+}
+
+.filter-icon {
+  color: var(--accent-color);
+}
+
+.filters-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.filter-label {
+  font-weight: 600;
+  color: #ccc;
+  min-width: 65px;
+}
+
+.pills-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 8px; /* Espacio manual para el scroll si aparece */
+}
+
+/* Ocultar barra de scroll en navegadores WebKit de forma limpia */
+.pills-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.pills-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.pill {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 20px;
+  border-radius: 50px;
+  white-space: nowrap;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(5px);
+}
+
+.pill:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.pill.active {
+  background: var(--accent-color);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 15px var(--accent-glow);
+}
+
+.discover-results {
+  padding: 0 4%;
+}
+
+@media (max-width: 768px) {
+  .discover-header {
+    padding: 20px;
+  }
+  .filter-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .pills-scroll {
+    width: 100%;
+  }
+  .filter-label {
+    margin-bottom: 2px;
+    font-size: 0.9rem;
+  }
+}

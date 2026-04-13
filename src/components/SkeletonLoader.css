@@ -1,0 +1,108 @@
+.glass-skeleton {
+  background: var(--glass-bg, rgba(25, 26, 32, 0.4));
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* El efecto Shimmer (Brillo animado) premium */
+.glass-skeleton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  100% { left: 200%; }
+}
+
+/* Skeleton Hero */
+.skeleton-hero {
+  width: 100%;
+  height: 80vh;
+  display: flex;
+  align-items: center;
+  padding: 0 4%;
+}
+
+.skeleton-content {
+  width: 100%;
+  max-width: 800px;
+  background: rgba(15, 16, 20, 0.2);
+  backdrop-filter: blur(5px);
+  padding: 40px;
+  border-radius: 20px;
+}
+
+.skeleton-title {
+  height: 3.5rem;
+  width: 60%;
+  border-radius: 8px;
+  margin-bottom: 25px;
+}
+
+.skeleton-text {
+  height: 1.1rem;
+  width: 100%;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.skeleton-text.short { 
+  width: 70%; 
+  margin-bottom: 35px; 
+}
+
+.skeleton-buttons { 
+  display: flex; 
+  gap: 15px; 
+}
+
+.skeleton-btn { 
+  height: 50px; 
+  width: 160px; 
+  border-radius: 8px; 
+}
+
+/* Skeleton Card & Row */
+.skeleton-row { 
+  margin: 40px 0; 
+  padding-left: 50px; 
+}
+
+.skeleton-row-title { 
+  height: 1.8rem; 
+  width: 250px; 
+  border-radius: 6px; 
+  margin-bottom: 20px; 
+}
+
+.skeleton-cards-container { 
+  display: flex; 
+  gap: 15px; 
+  overflow: hidden; 
+}
+
+.skeleton-card { 
+  width: 200px; 
+  height: 300px; 
+  border-radius: 12px; 
+  flex-shrink: 0; 
+}
+
+@media (max-width: 768px) {
+  .skeleton-row { padding-left: 20px; }
+  .skeleton-card { width: 140px; height: 210px; }
+  .skeleton-title { height: 2.5rem; width: 80%; }
+  .skeleton-content { padding: 20px; }
+}
