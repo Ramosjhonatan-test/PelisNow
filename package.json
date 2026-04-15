@@ -11,6 +11,10 @@
     "vercel-deploy": "npx vercel --prod"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
     "firebase": "^12.11.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

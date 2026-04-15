@@ -1,4 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react'; // 1. Importar useEffect
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'; // 2. Añadir hooks
+import { App as CapApp } from '@capacitor/app'; // 3. Importar Capacitor App
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -13,6 +15,26 @@ import { UserAuth } from './context/AuthContext';
 
 function App() {
   const { user } = UserAuth();
+  const navigate = useNavigate(); // Hook para navegar
+  const location = useLocation(); // Hook para saber dónde estamos
+
+  useEffect(() => {
+    // Configuramos el evento del botón atrás
+    const backHandler = CapApp.addListener('backButton', ({ canGoBack }) => {
+      if (location.pathname === '/') {
+        // Si estamos en el Home, cerramos la app
+        CapApp.exitApp();
+      } else {
+        // Si estamos en cualquier otra ruta, volvemos una página atrás
+        navigate(-1);
+      }
+    });
+
+    // Limpieza al desmontar
+    return () => {
+      backHandler.then(h => h.remove());
+    };
+  }, [location, navigate]);
 
   return (
     <div className="app-container">
