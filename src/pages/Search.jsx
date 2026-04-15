@@ -18,8 +18,8 @@ const Search = () => {
       const getResults = async () => {
         setLoading(true);
         const results = await searchMovies(query);
-        // Filter to only show items with posters
-        setMovies(results.filter(m => m.poster_path));
+        // Filter results: must have poster and be movie or tv
+        setMovies(results.filter(m => m.poster_path && (m.media_type === 'movie' || m.media_type === 'tv')));
         setLoading(false);
       };
       getResults();

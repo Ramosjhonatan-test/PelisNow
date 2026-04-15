@@ -21,7 +21,7 @@
   background-position: center;
   display: flex;
   align-items: center;
-  padding: 80px 6% 60px;
+  padding: 100px 6% 60px;
 }
 
 .hero-overlay {
@@ -229,33 +229,75 @@
 .series-selector-container {
   margin-bottom: 30px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 20px;
-  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 24px;
+  border-radius: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: hidden;
 }
 
-.season-selector {
-  margin-bottom: 20px;
+.series-selector-header {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  letter-spacing: 0.5px;
 }
 
-.season-selector label {
+.series-selector-header svg {
+  color: var(--accent-color);
+  font-size: 1.1rem;
+}
+
+.selector-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.selector-group:last-child {
+  margin-bottom: 0;
+}
+
+.selector-label {
   font-weight: 600;
   color: #ccc;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
 }
 
 .glass-select {
   background: rgba(20, 20, 25, 0.8);
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 8px 15px;
-  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 12px 16px;
+  border-radius: 10px;
   font-size: 1rem;
   outline: none;
   cursor: pointer;
   backdrop-filter: blur(10px);
+  width: 100%;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.glass-select:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.15);
 }
 
 .glass-select option {
@@ -263,48 +305,35 @@
   color: white;
 }
 
-.episodes-selector label {
-  font-weight: 600;
-  color: #ccc;
-  display: block;
-  margin-bottom: 10px;
-}
-
-.episodes-pills {
+/* Now Playing Indicator */
+.now-playing-badge {
   display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding-bottom: 10px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 8px 14px;
+  background: rgba(229, 9, 20, 0.1);
+  border: 1px solid rgba(229, 9, 20, 0.2);
+  border-radius: 8px;
+  color: #ff6b6b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
-.episodes-pills::-webkit-scrollbar {
-  height: 4px;
-}
-.episodes-pills::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-}
-
-.ep-pill {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  white-space: nowrap;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.3s;
+.playing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e50914;
+  display: inline-block;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+  flex-shrink: 0;
 }
 
-.ep-pill:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.ep-pill.active {
-  background: var(--accent-color);
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 15px var(--accent-glow);
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
 }
 
 /* Modal Player v2 (Mantener lógica de servidores) */
@@ -379,32 +408,96 @@
 }
 
 @media (max-width: 1000px) {
+  .details-hero {
+    padding: 100px 5% 60px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+  }
+  .hero-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
   .movie-main-grid {
     grid-template-columns: 1fr;
     text-align: center;
+    gap: 30px;
+    width: 100%;
   }
   .poster-side {
-    max-width: 250px;
+    max-width: 260px;
     margin: 0 auto;
+    perspective: none;
+  }
+  .floating-poster {
+    transform: none !important;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+  }
+  .info-side {
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+    text-align: center;
   }
   .movie-title-large {
-    font-size: 2.8rem;
+    font-size: 2.6rem;
+    text-align: center;
   }
-  .movie-meta-row, .main-action-group {
+  .movie-meta-row {
     justify-content: center;
+    flex-wrap: wrap;
+  }
+  .main-action-group {
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .movie-description-large {
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+  }
+  .series-selector-container {
+    text-align: left;
+    max-width: 100%;
+    width: 100%;
+  }
+  .episodes-selector label {
+    text-align: left;
   }
 }
 
 @media (max-width: 600px) {
+  .details-hero {
+    padding: 80px 4% 40px;
+  }
   .movie-title-large {
-    font-size: 2rem;
+    font-size: 1.8rem;
+  }
+  .movie-description-large {
+    font-size: 0.95rem;
+    line-height: 1.6;
   }
   .main-action-group {
     flex-direction: column;
     width: 100%;
+    gap: 10px;
   }
   .btn-premium-play, .btn-glass-secondary {
     width: 100%;
     justify-content: center;
+    padding: 14px 20px;
+    font-size: 0.9rem;
+  }
+  .btn-glass-icon {
+    width: 100%;
+  }
+  .series-selector-container {
+    padding: 16px 12px;
   }
 }
+

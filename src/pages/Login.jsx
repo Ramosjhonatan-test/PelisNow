@@ -1,20 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserAuth } from '../context/AuthContext';
 import { setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth } from '../firebase';
+import Logo from '../components/Logo';
 import './Login.css';
 
 const AVATARS = [
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=Patches',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=Ginger',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=Bandit',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=Mimi',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=Rocky',
+  'https://github.com/minions.png',
+  'https://github.com/stuart-minion.png',
+  'https://github.com/sonic.png',
+  'https://github.com/tails.png',
+  'https://github.com/knuckles.png',
+  'https://github.com/shadow.png',
+  'https://github.com/amyrose.png',
+  'https://github.com/pikachu.png',
 ];
+/* Nota: Se usan IDs de ejemplo para asegurar carga, en producción se obtendrían via API */
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -27,6 +29,15 @@ const Login = () => {
   const { logIn, signUp } = UserAuth();
   const navigate = useNavigate();
 
+  // Load remembered email on mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('zenplus_remembered_email');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -35,6 +46,13 @@ const Login = () => {
       // Set persistence based on "Remember Me"
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
       
+      // Save or clear email from localStorage
+      if (rememberMe) {
+        localStorage.setItem('zenplus_remembered_email', email);
+      } else {
+        localStorage.removeItem('zenplus_remembered_email');
+      }
+
       if (isLogin) {
         await logIn(email, password);
       } else {
@@ -52,9 +70,13 @@ const Login = () => {
       <div className="auth-bg-overlay"></div>
       
       <div className="auth-card">
-        <div className="auth-logo">PELIS<span>NOW</span></div>
-        <h2 className="auth-title">{isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'}</h2>
-        <p className="auth-subtitle">{isLogin ? 'Bienvenido de vuelta. Ingresa tus credenciales.' : 'Únete a miles de usuarios disfrutando el mejor cine.'}</p>
+        <div className="auth-header-centered">
+          <div className="auth-logo">ZEN<span>PLUS</span></div>
+          <h2 className="auth-title">{isLogin ? 'Iniciar Sesión' : 'Registrarse'}</h2>
+          <p className="auth-subtitle">
+            {isLogin ? 'Bienvenido de vuelta. Prepárate para la acción.' : 'Únete a la legión de fans más grande.'}
+          </p>
+        </div>
         
         {error && <div className="auth-error"><span>⚠️</span> {error}</div>}
         
@@ -87,16 +109,16 @@ const Login = () => {
 
           {!isLogin && (
             <div className="avatar-selector">
-              <p className="avatar-label">Elige tu avatar</p>
+              <p className="avatar-label">Elige tu personaje</p>
               <div className="avatar-grid">
                 {AVATARS.map((av, i) => (
-                  <img 
-                    key={i} 
-                    src={av} 
-                    alt={`Avatar ${i+1}`} 
-                    className={`avatar-option ${selectedAvatar === av ? 'selected' : ''}`}
-                    onClick={() => setSelectedAvatar(av)}
-                  />
+                  <div key={i} className={`avatar-wrapper ${selectedAvatar === av ? 'selected' : ''}`} onClick={() => setSelectedAvatar(av)}>
+                    <img 
+                      src={av} 
+                      alt={`Character ${i+1}`} 
+                      className="avatar-option"
+                    />
+                  </div>
                 ))}
               </div>
             </div>
@@ -116,14 +138,14 @@ const Login = () => {
             {isLoading ? (
               <div className="spinner"></div>
             ) : (
-              isLogin ? 'Entrar' : 'Crear mi cuenta'
+              isLogin ? 'ENTRAR' : 'REGISTRARSE'
             )}
           </button>
         </form>
         
         <div className="auth-footer">
           <p>
-            {isLogin ? '¿Nuevo en PelisNow? ' : '¿Ya tienes cuenta? '}
+            {isLogin ? '¿Nuevo en Zenplus? ' : '¿Ya eres miembro? '}
             <span onClick={() => { setIsLogin(!isLogin); setError(''); }} className="auth-toggle">
               {isLogin ? 'Regístrate ahora' : 'Inicia Sesión'}
             </span>

@@ -30,13 +30,19 @@ const MovieCard = ({ movie }) => {
 
   const posterUrl = movie.isExclusive && !movie.tmdb_id ? movie.poster_path : getImageUrl(movie.poster_path);
 
+  // Precision type detection
+  const isTv = movie.media_type === 'tv' || (!movie.title && movie.name) || movie.seasons;
+  const linkPath = isTv ? `/tv/${movie.id}` : `/movie/${movie.id}`;
+  const contentType = isTv ? 'Serie' : 'Película';
+
   return (
     <div 
         className='movie-card'
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
     >
-      <Link to={`/movie/${movie.id}`}>
+      <Link to={linkPath}>
+        <div className="card-badge">{contentType}</div>
         <img src={posterUrl} alt={movie.title || movie.name} loading="lazy" />
         {hover && (
           <div className='card-overlay'>

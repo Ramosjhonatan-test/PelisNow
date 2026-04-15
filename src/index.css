@@ -1,12 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;800&display=swap');
+
 :root {
   --bg-primary: #0f1014;
   --bg-secondary: #1a1b21;
-  --accent-color: #e50914; /* Rojo característico */
+  --accent-color: #e50914; 
   --accent-glow: rgba(229, 9, 20, 0.4);
   --text-primary: #ffffff;
   --text-secondary: #a0a0a0;
   --glass-bg: rgba(25, 26, 32, 0.4);
   --glass-border: rgba(255, 255, 255, 0.08);
+
+  /* New Striking Fonts */
+  --font-main: 'Outfit', sans-serif;
+  --font-cinematic: 'Bebas Neue', cursive;
 }
 
 * {
@@ -22,7 +28,7 @@ body {
     radial-gradient(circle at 85% 30%, rgba(20, 20, 35, 0.5), transparent 25%);
   background-attachment: fixed;
   color: var(--text-primary);
-  font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-main);
   -webkit-font-smoothing: antialiased;
 }
 

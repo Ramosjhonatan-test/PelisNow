@@ -48,6 +48,19 @@ export const fetchFilteredData = async (type = 'movie', genreId = '', year = '')
   }
 };
 
+export const fetchCollection = async (collectionId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/collection/${collectionId}?api_key=${API_KEY}&language=es-MX`);
+    if (!response.ok) throw new Error("Error fetching collection");
+    const data = await response.json();
+    return data.parts || [];
+  } catch (error) {
+    console.error("TMDB Collection Error:", error);
+    return [];
+  }
+};
+
+
 export const fetchSeasonEpisodes = async (tvId, seasonNumber) => {
   try {
     const res = await fetch(`${BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}&language=es-MX`);
@@ -69,4 +82,6 @@ export const requests = {
   fetchRomanceMovies: `/discover/movie?with_genres=10749`,
   fetchDocumentaries: `/discover/movie?with_genres=99`,
   fetchUpcoming: `/movie/upcoming`,
+  fetchRecommendations: (id, type) => `/${type}/${id}/recommendations`,
 };
+

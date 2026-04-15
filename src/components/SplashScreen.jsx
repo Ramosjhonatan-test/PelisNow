@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import Logo from './Logo';
 import './SplashScreen.css';
 
 const SplashScreen = () => {
@@ -17,9 +18,13 @@ const SplashScreen = () => {
 
   return (
     <div className="splash-screen">
+      <div className="splash-backdrop-flash"></div>
       <div className="splash-logo-container">
-        <h1 className="splash-logo-text">PELIS<span>NOW</span></h1>
-        <div className="splash-spinner"></div>
+        <h1 className="splash-logo-text">
+          <span className="part-zen">ZEN</span>
+          <span className="part-plus">PLUS</span>
+        </h1>
+        <div className="splash-orbit-ring"></div>
       </div>
     </div>
   );

@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { FaPlay, FaPlus, FaArrowLeft, FaTimes, FaFilm, FaInfoCircle, FaLanguage } from 'react-icons/fa';
-import { getImageUrl, fetchSeasonEpisodes } from '../api/tmdb';
+import { getImageUrl, fetchSeasonEpisodes, fetchCollection, requests } from '../api/tmdb';
 import { UserAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { arrayUnion, doc, setDoc, getDoc } from 'firebase/firestore';
 import MovieCard from '../components/MovieCard';
-import { SkeletonHero } from '../components/SkeletonLoader';
+import { SkeletonHero, SkeletonRow } from '../components/SkeletonLoader';
 import './MovieDetails.css';
 
 const MovieDetails = () => {
   const { id } = useParams();
+  const location = useLocation();
+  const isTvRoute = location.pathname.startsWith('/tv');
+  
   const [movie, setMovie] = useState(null);
   const [similar, setSimilar] = useState([]);
   const [playVideo, setPlayVideo] = useState(null); // 'stream' or 'trailer'
@@ -22,9 +25,15 @@ const MovieDetails = () => {
   const { user } = UserAuth();
 
   useEffect(() => {
+    // Clear movie state when navigating to a new ID or category
+    setMovie(null);
+    setSimilar([]);
+    setPlayVideo(null);
+    setEpisodesList([]);
+    
     const fetchMovieData = async () => {
       try {
-        // 1. Get custom Firestore data
+        // 1. Get custom Firestore data (Exclusive)
         let customData = null;
         try {
           const docRef = doc(db, 'exclusive_movies', id);
@@ -34,23 +43,41 @@ const MovieDetails = () => {
           }
         } catch (err) { /* Silencio si falla permisos */ }
 
-        // 2. Fetch TMDB Data
-        const response = await fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=c9ae557803081c8546b65026fec5a5bc&language=es-MX&append_to_response=videos,similar`);
-        let tmdbData = await response.json();
+        // 2. Fetch TMDB Data (PRECISE)
+        const category = isTvRoute ? 'tv' : 'movie';
+        const tmdbUrl = `https://api.themoviedb.org/3/${category}/${id}?api_key=c9ae557803081c8546b65026fec5a5bc&language=es-MX&append_to_response=videos,similar,recommendations`;
         
-        if (!tmdbData.id) {
-           // Try TV
-           const tvRes = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=c9ae557803081c8546b65026fec5a5bc&language=es-MX&append_to_response=videos,similar`);
-           tmdbData = await tvRes.json();
-        }
+        const response = await fetch(tmdbUrl);
+        const tmdbData = await response.json();
 
         if (tmdbData.id || customData) {
-           const finalMovie = { ...tmdbData, ...customData };
+           const finalMovie = { ...tmdbData, ...customData, media_type: category };
            setMovie(finalMovie);
-           setSimilar(tmdbData.similar?.results?.slice(0, 6) || []);
 
-           if (!finalMovie.title && finalMovie.seasons && finalMovie.seasons.length > 0) {
-             const defaultSeason = finalMovie.seasons.find(s => s.season_number > 0) || finalMovie.seasons[0];
+           // 3. Smart Recommendations Logic
+           let suggestions = [];
+
+           // A. If belongs to a collection (e.g., Madagascar sequels)
+           if (finalMovie.belongs_to_collection) {
+             const collectionParts = await fetchCollection(finalMovie.belongs_to_collection.id);
+             suggestions = [...collectionParts];
+           }
+
+           // B. Merge with Official Recommendations & Similar
+           const recs = tmdbData.recommendations?.results || [];
+           const similar = tmdbData.similar?.results || [];
+           
+           suggestions = [...suggestions, ...recs, ...similar];
+
+           // C. Filter duplicates and current movie
+           const uniqueSuggestions = Array.from(new Map(suggestions.map(m => [m.id, m])).values())
+             .filter(m => m.id !== parseInt(id))
+             .slice(0, 12); // Show more items for a premium feel
+
+           setSimilar(uniqueSuggestions);
+
+           if (isTvRoute && tmdbData.seasons && tmdbData.seasons.length > 0) {
+             const defaultSeason = tmdbData.seasons.find(s => s.season_number > 0) || tmdbData.seasons[0];
              setSelectedSeason(defaultSeason.season_number);
            }
         }
@@ -60,7 +87,7 @@ const MovieDetails = () => {
     };
     fetchMovieData();
     window.scrollTo(0, 0);
-  }, [id]);
+  }, [id, isTvRoute]);
 
   useEffect(() => {
     const loadEpisodes = async () => {
@@ -101,7 +128,7 @@ const MovieDetails = () => {
           id: movie.id,
           title: movie.title || movie.name,
           poster_path: movie.poster_path,
-          type: movie.title ? 'movie' : 'tv'
+          type: isTvRoute ? 'tv' : 'movie'
         });
         if (currentHistory.length > 20) currentHistory.shift();
         await setDoc(userRef, { history: currentHistory }, { merge: true });
@@ -146,8 +173,7 @@ const MovieDetails = () => {
   const getPublicStreamUrl = () => {
     if (!movie) return '';
     const movieId = movie.tmdb_id || movie.id;
-    const isTv = !movie.title;
-    return isTv 
+    return isTvRoute 
       ? `https://player.videasy.net/tv/${movieId}/${selectedSeason}/${selectedEpisode}?color=4a7af7`
       : `https://player.videasy.net/movie/${movieId}?color=4a7af7`;
   };
@@ -188,7 +214,7 @@ const MovieDetails = () => {
                 <h1 className="movie-title-large">{movie.title || movie.name}</h1>
                 <div className="movie-meta-row">
                   <span className="year-tag">{movie.release_date?.split('-')[0] || movie.first_air_date?.split('-')[0]}</span>
-                  <span className="type-tag">{movie.title ? 'Película' : 'Serie'}</span>
+                  <span className="type-tag">{isTvRoute ? 'Serie' : 'Película'}</span>
                   {movie.vote_average > 0 && <span className="rating-tag">⭐ {movie.vote_average.toFixed(1)}</span>}
                 </div>
               </div>
@@ -197,10 +223,14 @@ const MovieDetails = () => {
                 {movie.overview || 'Esta increíble producción no cuenta con una descripción detallada todavía, pero promete ser una experiencia inolvidable.'}
               </p>
               
-              {!movie.title && movie.seasons && (
+              {isTvRoute && movie.seasons && (
                 <div className="series-selector-container">
-                  <div className="season-selector">
-                    <label>Temporada:</label>
+                  <div className="series-selector-header">
+                    <FaFilm /> <span>Selecciona qué ver</span>
+                  </div>
+
+                  <div className="selector-group">
+                    <label className="selector-label">📺 Temporada</label>
                     <select 
                       className="glass-select" 
                       value={selectedSeason} 
@@ -218,20 +248,24 @@ const MovieDetails = () => {
                   </div>
                   
                   {episodesList.length > 0 && (
-                     <div className="episodes-selector">
-                       <label>Capítulo:</label>
-                       <div className="episodes-pills">
-                          {episodesList.map(ep => (
-                            <button 
-                              key={ep.id} 
-                              className={`ep-pill ${selectedEpisode === ep.episode_number ? 'active' : ''}`}
-                              onClick={() => setSelectedEpisode(ep.episode_number)}
-                            >
-                              {ep.episode_number}. {ep.name || 'Episodio'}
-                            </button>
-                          ))}
-                       </div>
-                     </div>
+                    <div className="selector-group">
+                      <label className="selector-label">🎬 Capítulo</label>
+                      <select
+                        className="glass-select"
+                        value={selectedEpisode}
+                        onChange={(e) => setSelectedEpisode(Number(e.target.value))}
+                      >
+                        {episodesList.map(ep => (
+                          <option key={ep.id} value={ep.episode_number}>
+                            {ep.episode_number}. {ep.name || 'Episodio'}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="now-playing-badge">
+                        <span className="playing-dot"></span>
+                        Reproduciendo: T{selectedSeason} · E{selectedEpisode}
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
@@ -242,8 +276,8 @@ const MovieDetails = () => {
                     <FaPlay /> Ver (Latino HD)
                   </button>
                 ) : (
-                  <button className="btn-premium-play fallback-btn" style={{ opacity: 0.5, cursor: 'not-allowed' }} title={movie.title ? "El administrador aún no ha subido el video para esta película" : "Usa el servidor público para series"}>
-                    <FaPlay /> {movie.title ? 'Premium Bloqueado' : 'Sólo Público'}
+                  <button className="btn-premium-play fallback-btn" style={{ opacity: 0.5, cursor: 'not-allowed' }} title={isTvRoute ? "Usa el servidor público para series" : "El administrador aún no ha subido el video para esta película"}>
+                    <FaPlay /> {isTvRoute ? 'Sólo Público' : 'Premium Bloqueado'}
                   </button>
                 )}
 

@@ -19,6 +19,7 @@ const Admin = () => {
   const [exclusiveMovies, setExclusiveMovies] = useState([]);
   const [loadingMovies, setLoadingMovies] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [mediaType, setMediaType] = useState('movie'); // 'movie' or 'tv'
 
   // Homepage Config States
   const [sections, setSections] = useState([]);
@@ -61,7 +62,7 @@ const Admin = () => {
   const fetchFromTMDB = async () => {
     if (!tmdbId) return alert('Ingresa un ID de TMDB');
     try {
-      const res = await fetch(`https://api.themoviedb.org/3/movie/${tmdbId}?api_key=c9ae557803081c8546b65026fec5a5bc&language=es-MX`);
+      const res = await fetch(`https://api.themoviedb.org/3/${mediaType}/${tmdbId}?api_key=c9ae557803081c8546b65026fec5a5bc&language=es-MX`);
       const data = await res.json();
       if (data.id) {
         setTitle(data.title || data.name);
@@ -80,6 +81,7 @@ const Admin = () => {
         video_url: videoUrl, 
         video_url_spanish: videoUrlSpanish, // Saved here
         tmdb_id: tmdbId || null, 
+        media_type: mediaType, // Saved here
         sectionId: selectedSection, 
         isExclusive: true, 
         updatedAt: new Date().toISOString() 
@@ -93,7 +95,7 @@ const Admin = () => {
     } catch (err) { console.error(err); alert('Error'); }
   };
 
-  const resetForm = () => { setEditingId(null); setTmdbId(''); setTitle(''); setOverview(''); setPoster(''); setBackdrop(''); setVideoUrl(''); setVideoUrlSpanish(''); setSelectedSection('exclusive'); };
+  const resetForm = () => { setEditingId(null); setTmdbId(''); setTitle(''); setOverview(''); setPoster(''); setBackdrop(''); setVideoUrl(''); setVideoUrlSpanish(''); setSelectedSection('exclusive'); setMediaType('movie'); };
 
   const startEdit = (movie) => {
     setEditingId(movie.id);
@@ -105,6 +107,7 @@ const Admin = () => {
     setVideoUrl(movie.video_url || '');
     setVideoUrlSpanish(movie.video_url_spanish || '');
     setSelectedSection(movie.sectionId || 'exclusive');
+    setMediaType(movie.media_type || 'movie');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -135,6 +138,10 @@ const Admin = () => {
                 <h2>{editingId ? 'Editar Película' : 'Nueva Película'}</h2>
               </div>
               <div className="tmdb-import-box">
+                <select value={mediaType} onChange={(e) => setMediaType(e.target.value)} className="admin-select-mini">
+                  <option value="movie">Película</option>
+                  <option value="tv">Serie</option>
+                </select>
                 <input placeholder="ID TMDB" value={tmdbId} onChange={(e) => setTmdbId(e.target.value)} />
                 <button onClick={fetchFromTMDB} className="import-btn"><FaSearch /> Importar</button>
               </div>
