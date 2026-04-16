@@ -1,5 +1,14 @@
 {
   "appId": "com.zenplus.app",
   "appName": "ZenPlus",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": ["player.videasy.net"]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  }
 }
