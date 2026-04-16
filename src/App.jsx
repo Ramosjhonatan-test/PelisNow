@@ -38,17 +38,19 @@ function AppContent() {
           setAppConfig(data);
           setDbError(null);
           
+          const isTimeExpired = data.expiryDate && new Date() > new Date(data.expiryDate);
+          const isSecurityOn = data.isLocked === true;
+          const isCurrentlyExpired = isSecurityOn && isTimeExpired;
+          
           const wasExpired = localStorage.getItem('zenplus_was_expired') === 'true';
-          const isNowExpired = data.expiryDate && new Date() > new Date(data.expiryDate);
           
-          if (wasExpired && !isNowExpired) {
+          // Sound when REACTIVATED (Transition from Locked to Unlocked)
+          if (wasExpired && !isCurrentlyExpired) {
             addNotification('Servidor Activo', '¡El acceso a ZenPlus ha sido reactivado!', 'success');
-            localStorage.setItem('zenplus_was_expired', 'false');
           }
           
-          if (isNowExpired) {
-            localStorage.setItem('zenplus_was_expired', 'true');
-          }
+          // Update last state
+          localStorage.setItem('zenplus_was_expired', isCurrentlyExpired ? 'true' : 'false');
         } else {
           setAppConfig({ expiryDate: '2026-12-31T23:59:59Z' });
           setDbError('Documento NO encontrado');
@@ -106,8 +108,11 @@ function AppContent() {
   const isProductionBeta = Capacitor.isNativePlatform();
   const expiryDateObj = appConfig?.expiryDate ? new Date(appConfig.expiryDate) : null;
   const isTimeExpired = expiryDateObj && currentTime > expiryDateObj;
-  const isManuallyLocked = appConfig?.isLocked === true;
-  const isExpired = isManuallyLocked || isTimeExpired;
+  
+  // MODO DE SEGURIDAD: Si está en false, la app está ABIERTA siempre.
+  // Si está en true, la app sigue la fecha de expiración.
+  const isSecurityEnabled = appConfig?.isLocked === true;
+  const isExpired = isSecurityEnabled && isTimeExpired;
 
   // Debugging info for Logcat removed for production
 
@@ -137,13 +142,11 @@ function AppContent() {
         </div>
         
         <h1 style={{ color: '#e50914', fontSize: '28px', marginBottom: '10px' }}>
-          {isManuallyLocked ? 'Servidor Desactivado' : 'Acceso Expirado'}
+          Acceso Expirado
         </h1>
         
         <p style={{ fontSize: '16px', color: '#a0a0a0', maxWidth: '300px', marginBottom: '25px' }}>
-          {isManuallyLocked 
-            ? 'El administrador ha pausado el acceso a la aplicación manualmente.' 
-            : 'Tu periodo de prueba o acceso temporal ha finalizado.'}
+          Tu periodo de acceso temporal a <strong>ZenPlus</strong> ha finalizado.
         </p>
 
         <div style={{ 
@@ -158,7 +161,7 @@ function AppContent() {
             Jhonatan Jr.
           </p>
           <p style={{ margin: '10px 0 0', fontSize: '16px', color: '#e50914', fontWeight: 'bold' }}>
-            Contacto: 73225724
+            Contacto: +591 73225724
           </p>
         </div>
       </div>

@@ -322,7 +322,7 @@ const Admin = () => {
               </div>
 
               <div className="config-item-box lock-switch-container">
-                <label><FaPowerOff /> Estado del Servidor</label>
+                <label><FaPowerOff /> Modo de Seguridad (Control por Fecha)</label>
                 <button 
                   className={`lock-toggle-btn ${isLocked ? 'locked' : 'unlocked'} ${isUpdatingLock ? 'busy' : ''}`}
                   onClick={toggleAppLock}
@@ -331,10 +331,12 @@ const Admin = () => {
                   <div className="toggle-circle">
                     {isUpdatingLock && <div className="spinner-mini"></div>}
                   </div>
-                  <span>{isLocked ? 'ACCESO BLOQUEADO' : 'ACCESO ACTIVO'}</span>
+                  <span>{isLocked ? 'SEGURIDAD ACTIVADA' : 'ACCESO TOTAL CONCEDIDO'}</span>
                 </button>
                 <p className="helper-text">
-                  {isUpdatingLock ? 'Sincronizando con el servidor...' : 'Esto bloquea la app de inmediato, ignorando la fecha.'}
+                  {isLocked 
+                    ? 'La app se bloqueará si la fecha expira.' 
+                    : 'La app estará abierta ignorando la fecha (Ideal para pruebas).'}
                 </p>
               </div>
 
