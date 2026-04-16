@@ -565,6 +565,119 @@
   color: #aaa;
 }
 
+/* Users Tab */
+.admin-users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.users-table-header {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 100px;
+    padding: 10px 20px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.user-row {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 100px;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.2s;
+}
+
+.user-row.is-blocked {
+    background: rgba(229, 9, 20, 0.05);
+    border-color: rgba(229, 9, 20, 0.1);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+.user-email {
+    font-weight: 600;
+    font-size: 0.95rem;
+    word-break: break-all;
+    padding-right: 10px;
+}
+
+.badge-date {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.status-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.status-btn.active {
+    background: rgba(45, 201, 110, 0.1);
+    color: #2dc96e;
+    border-color: rgba(45, 201, 110, 0.2);
+}
+
+.status-btn.blocked {
+    background: rgba(229, 9, 20, 0.1);
+    color: #e50914;
+    border-color: rgba(229, 9, 20, 0.2);
+}
+
+.status-btn:hover {
+    filter: brightness(1.2);
+    transform: translateY(-1px);
+}
+
+.no-data {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+    font-style: italic;
+}
+
 @media (max-width: 900px) {
   .admin-sections { grid-template-columns: 1fr; }
 }

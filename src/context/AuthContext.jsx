@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 
 const AuthContext = createContext();
@@ -18,7 +18,9 @@ export function AuthContextProvider({ children }) {
       // Create a user document to store their favorites
       await setDoc(doc(db, 'users', userCredential.user.email), {
         savedMovies: [],
-        photoURL: avatarUrl || ''
+        photoURL: avatarUrl || '',
+        createdAt: new Date().toISOString(),
+        status: 'active'
       });
       return userCredential;
     } catch (error) {
@@ -34,6 +36,10 @@ export function AuthContextProvider({ children }) {
     return signOut(auth);
   }
 
+  function resetPassword(email) {
+    return sendPasswordResetEmail(auth, email);
+  }
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -44,7 +50,7 @@ export function AuthContextProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ signUp, logIn, logOut, user }}>
+    <AuthContext.Provider value={{ signUp, logIn, logOut, resetPassword, user }}>
       {children}
     </AuthContext.Provider>
   );

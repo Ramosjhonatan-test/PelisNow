@@ -10,6 +10,7 @@ import './MovieCard.css';
 
 const MovieCard = ({ movie }) => {
   const [hover, setHover] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const { user } = UserAuth();
   const { addNotification } = useNotifications();
 
@@ -45,7 +46,13 @@ const MovieCard = ({ movie }) => {
     >
       <Link to={linkPath}>
         <div className="card-badge">{contentType}</div>
-        <img src={posterUrl} alt={movie.title || movie.name} loading="lazy" />
+        <img 
+          src={posterUrl} 
+          alt={movie.title || movie.name} 
+          loading="lazy" 
+          onLoad={() => setLoaded(true)}
+          className={loaded ? 'img-loaded' : 'img-loading'}
+        />
         {hover && (
           <div className='card-overlay'>
             <div className='overlay-icons'>

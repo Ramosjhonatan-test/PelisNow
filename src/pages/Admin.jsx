@@ -23,6 +23,10 @@ const Admin = () => {
   const [mediaType, setMediaType] = useState('movie'); // 'movie' or 'tv'
   const { addNotification } = useNotifications();
   
+  // User Management States
+  const [users, setUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
   // App Config States
   const [expiryDate, setExpiryDate] = useState('');
   const [isLocked, setIsLocked] = useState(false);
@@ -52,6 +56,18 @@ const Admin = () => {
       setExclusiveMovies(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (err) { console.error(err); }
     setLoadingMovies(false);
+  };
+
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const querySnapshot = await getDocs(collection(db, 'users'));
+      setUsers(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (err) { 
+      console.error(err); 
+      addNotification('Error', 'No se pudieron cargar los usuarios', 'error');
+    }
+    setLoadingUsers(false);
   };
 
   const fetchHomeConfig = async () => {
@@ -89,6 +105,7 @@ const Admin = () => {
     fetchExclusive(); 
     fetchHomeConfig(); 
     fetchAppConfig();
+    fetchUsers();
   }, []);
 
   const fetchFromTMDB = async () => {
@@ -143,6 +160,31 @@ const Admin = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleDeleteUser = async (userEmail) => {
+    if (window.confirm(`¿Estás seguro de eliminar al usuario ${userEmail}?`)) {
+      try {
+        await deleteDoc(doc(db, 'users', userEmail));
+        addNotification('Usuario Eliminado', 'Se ha removido el registro del usuario.', 'success');
+        fetchUsers();
+      } catch (err) {
+        console.error(err);
+        addNotification('Error', 'No se pudo eliminar al usuario.', 'error');
+      }
+    }
+  };
+
+  const handleToggleUserStatus = async (userEmail, currentStatus) => {
+    const newStatus = currentStatus === 'blocked' ? 'active' : 'blocked';
+    try {
+      await setDoc(doc(db, 'users', userEmail), { status: newStatus }, { merge: true });
+      addNotification('Estado Actualizado', `Usuario ${newStatus === 'active' ? 'Activado' : 'Desactivado'}`, 'info');
+      fetchUsers();
+    } catch (err) {
+      console.error(err);
+      addNotification('Error', 'No se pudo cambiar el estado.', 'error');
+    }
+  };
+
   // Homepage Methods (Same as before but simplified)
   const toggleAppLock = async () => {
     const newState = !isLocked;
@@ -184,9 +226,10 @@ const Admin = () => {
   return (
     <div className="admin-container">
       <div className="admin-header">
-        <h1>Centro de Control Streaming</h1>
+        <h1>Centro de Control ZenPlus</h1>
         <div className="admin-tabs">
           <button className={activeTab === 'movies' ? 'active' : ''} onClick={() => setActiveTab('movies')}><FaFilm /> Películas</button>
+          <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}><FaCheckCircle /> Usuarios</button>
           <button className={activeTab === 'homepage' ? 'active' : ''} onClick={() => setActiveTab('homepage')}><FaHome /> Portada</button>
           <button className={activeTab === 'config' ? 'active' : ''} onClick={() => setActiveTab('config')}><FaCog /> Configuración</button>
         </div>
@@ -251,6 +294,75 @@ const Admin = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'users' && (
+        <div className="admin-users-tab animate-fade-in">
+          <div className="admin-section-card glass">
+            <div className="section-header-row">
+              <h2><FaCheckCircle className="accent-icon" /> Usuarios Registrados ({users.length})</h2>
+              <button className="import-btn" onClick={fetchUsers}><FaSearch /> Refrescar</button>
+            </div>
+            
+            <p className="admin-note">
+              Lista de usuarios que han creado una cuenta en la aplicación. Puedes ver su correo y gestionar su acceso.
+            </p>
+
+            <div className="admin-users-list">
+              <div className="users-table-header">
+                <span>Usuario</span>
+                <span>Registro</span>
+                <span>Estado</span>
+                <span>Acciones</span>
+              </div>
+              {loadingUsers ? (
+                <div className="loading-spinner">Cargando usuarios...</div>
+              ) : (
+                users.map(u => {
+                  const regDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A';
+                  const isBlocked = u.status === 'blocked';
+                  
+                  return (
+                    <div key={u.id} className={`user-row ${isBlocked ? 'is-blocked' : ''}`}>
+                      <div className="user-info">
+                        <div className="user-avatar">
+                          {u.photoURL ? <img src={u.photoURL} alt="" /> : <div className="avatar-placeholder">{u.id.charAt(0).toUpperCase()}</div>}
+                        </div>
+                        <span className="user-email">{u.id}</span>
+                      </div>
+                      
+                      <div className="user-date">
+                        <span className="badge-date">{regDate}</span>
+                      </div>
+
+                      <div className="user-status-toggle">
+                        <button 
+                          className={`status-btn ${isBlocked ? 'blocked' : 'active'}`}
+                          onClick={() => handleToggleUserStatus(u.id, u.status)}
+                        >
+                          {isBlocked ? <><FaTimesCircle /> Bloqueado</> : <><FaCheckCircle /> Activo</>}
+                        </button>
+                      </div>
+
+                      <div className="user-actions">
+                        <button 
+                          className="action-btn delete" 
+                          onClick={() => handleDeleteUser(u.id)}
+                          title="Eliminar Usuario Completamente"
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              {!loadingUsers && users.length === 0 && (
+                <div className="no-data">No hay usuarios registrados aún.</div>
+              )}
             </div>
           </div>
         </div>

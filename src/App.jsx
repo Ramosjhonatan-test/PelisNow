@@ -26,6 +26,21 @@ function AppContent() {
   const location = useLocation();
   const [appConfig, setAppConfig] = useState(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
+  const [userDoc, setUserDoc] = useState(null);
+
+  // Listener for user document (Status check)
+  useEffect(() => {
+    if (!user?.email) {
+      setUserDoc(null);
+      return;
+    }
+    const unsub = onSnapshot(doc(db, 'users', user.email), (snap) => {
+      if (snap.exists()) {
+        setUserDoc(snap.data());
+      }
+    });
+    return () => unsub();
+  }, [user]);
 
   // Remotely managed access control
   const [dbError, setDbError] = useState(null);
@@ -105,6 +120,62 @@ function AppContent() {
     return () => clearInterval(interval);
   }, []);
 
+  // INDIVIDUAL USER BLOCK
+  if (userDoc?.status === 'blocked') {
+    return (
+      <div className="expired-screen animate-fade-in" style={{
+        height: '100vh',
+        backgroundColor: '#0f1014',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        color: 'white',
+        textAlign: 'center',
+        padding: '20px',
+        fontFamily: 'sans-serif'
+      }}>
+        <div className="expired-badge" style={{ 
+          width: '80px', height: '80px', borderRadius: '50%', 
+          backgroundColor: 'rgba(239, 153, 21, 0.1)', display: 'flex',
+          justifyContent: 'center', alignItems: 'center', marginBottom: '20px',
+          border: '2px solid #ef9915',
+          boxShadow: '0 0 20px rgba(239, 153, 21, 0.3)'
+        }}>
+          <span style={{ fontSize: '40px', color: '#ef9915', fontWeight: 'bold' }}>!</span>
+        </div>
+        
+        <h1 style={{ color: '#ef9915', fontSize: '28px', marginBottom: '10px' }}>
+          Cuenta Desactivada
+        </h1>
+        
+        <p style={{ fontSize: '16px', color: '#a0a0a0', maxWidth: '300px', marginBottom: '30px' }}>
+          Tu acceso a <strong>ZenPlus</strong> ha sido suspendido temporalmente por el administrador.
+        </p>
+
+        <div style={{
+          background: 'rgba(255,255,255,0.05)',
+          padding: '20px',
+          borderRadius: '16px',
+          border: '1px solid rgba(255,255,255,0.1)',
+          marginBottom: '40px'
+        }}>
+          <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#888' }}>Para soporte o reactivación:</p>
+          <p style={{ margin: '0', fontSize: '18px', fontWeight: 'bold', color: '#25D366' }}>
+            Envía mensaje o solicita: +591 73225724
+          </p>
+        </div>
+
+        <div style={{ backgroundColor: '#1c1d22', padding: '20px', borderRadius: '16px', border: '1px solid #333' }}>
+          <p style={{ margin: '0', fontSize: '14px', color: '#888' }}>ID de Usuario:</p>
+          <p style={{ margin: '5px 0', fontSize: '14px', fontWeight: 'bold', color: '#fff', wordBreak: 'break-all' }}>
+            {user?.email}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const isProductionBeta = Capacitor.isNativePlatform();
   const expiryDateObj = appConfig?.expiryDate ? new Date(appConfig.expiryDate) : null;
   const isTimeExpired = expiryDateObj && currentTime > expiryDateObj;
@@ -113,8 +184,6 @@ function AppContent() {
   // Si está en true, la app sigue la fecha de expiración.
   const isSecurityEnabled = appConfig?.isLocked === true;
   const isExpired = isSecurityEnabled && isTimeExpired;
-
-  // Debugging info for Logcat removed for production
 
   // App only blocks if it's running as a NATIVE APK (not on web/debug)
   if (isExpired && isProductionBeta) {
@@ -145,23 +214,38 @@ function AppContent() {
           Acceso Expirado
         </h1>
         
-        <p style={{ fontSize: '16px', color: '#a0a0a0', maxWidth: '300px', marginBottom: '25px' }}>
+        <p style={{ fontSize: '16px', color: '#a0a0a0', maxWidth: '300px', marginBottom: '30px' }}>
           Tu periodo de acceso temporal a <strong>ZenPlus</strong> ha finalizado.
         </p>
+
+        <div style={{
+          background: 'rgba(255,255,255,0.05)',
+          padding: '20px',
+          borderRadius: '16px',
+          border: '1px solid rgba(255,255,255,0.1)',
+          marginBottom: '40px'
+        }}>
+          <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#888' }}>Solicita acceso aquí:</p>
+          <p style={{ margin: '0', fontSize: '18px', fontWeight: 'bold', color: '#25D366' }}>
+            Envía mensaje o solicita: +591 73225724
+          </p>
+        </div>
 
         <div style={{ 
           backgroundColor: '#1c1d22', 
           padding: '20px 30px', 
           borderRadius: '16px',
           border: '1px solid #333',
-          backdropFilter: 'blur(10px)'
+          backdropFilter: 'blur(10px)',
+          width: '100%',
+          maxWidth: '300px'
         }}>
           <p style={{ margin: '0', fontSize: '14px', color: '#888' }}>Desarrollado por:</p>
           <p style={{ margin: '5px 0', fontSize: '18px', fontWeight: 'bold', color: '#fff' }}>
             Jhonatan Jr.
           </p>
-          <p style={{ margin: '10px 0 0', fontSize: '16px', color: '#e50914', fontWeight: 'bold' }}>
-            Contacto: +591 73225724
+          <p style={{ margin: '10px 0 0', fontSize: '14px', color: '#a0a0a0' }}>
+            Envía un mensaje para solicitar o renovar tu acceso.
           </p>
         </div>
       </div>

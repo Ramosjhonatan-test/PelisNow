@@ -27,7 +27,7 @@ const Login = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0]);
   const [isLoading, setIsLoading] = useState(false);
-  const { logIn, signUp } = UserAuth();
+  const { logIn, signUp, resetPassword } = UserAuth();
   const { addNotification } = useNotifications();
   const navigate = useNavigate();
 
@@ -39,6 +39,16 @@ const Login = () => {
       setRememberMe(true);
     }
   }, []);
+
+  const translateError = (message) => {
+    if (message.includes('email-already-in-use')) return 'Este correo ya está registrado. Intenta iniciar sesión.';
+    if (message.includes('wrong-password') || message.includes('invalid-credential')) return 'Correo o contraseña incorrectos.';
+    if (message.includes('invalid-email')) return 'El formato del correo electrónico no es válido.';
+    if (message.includes('weak-password')) return 'La contraseña es muy débil (mínimo 6 caracteres).';
+    if (message.includes('user-not-found')) return 'No hay ninguna cuenta con este correo.';
+    if (message.includes('too-many-requests')) return 'Demasiados intentos. Inténtalo más tarde.';
+    return message.replace('Firebase:', '').replace(/auth\//, '').trim();
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -64,9 +74,26 @@ const Login = () => {
       }
       navigate('/');
     } catch (err) {
-      const errorMsg = err.message.replace('Firebase:', '').replace(/auth\//, '').trim();
+      const errorMsg = translateError(err.message);
       setError(errorMsg);
-      addNotification('Error de acceso', errorMsg, 'error');
+      addNotification('Error', errorMsg, 'error');
+    }
+    setIsLoading(false);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Por favor, ingresa tu correo electrónico primero.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await resetPassword(email);
+      addNotification('Correo enviado', 'Revisa tu bandeja de entrada para restablecer tu contraseña.', 'info');
+      setError('');
+    } catch (err) {
+      const errorMsg = translateError(err.message);
+      setError(errorMsg);
     }
     setIsLoading(false);
   };
@@ -137,6 +164,9 @@ const Login = () => {
                 <span className="checkmark"></span>
                 Recuérdame
               </label>
+              <span className="forgot-password" onClick={handleForgotPassword}>
+                ¿Olvidaste tu contraseña?
+              </span>
             </div>
           )}
 
