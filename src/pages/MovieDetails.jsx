@@ -3,6 +3,7 @@ import { useParams, Link, useLocation } from 'react-router-dom';
 import { FaPlay, FaPlus, FaArrowLeft, FaTimes, FaFilm, FaInfoCircle, FaLanguage } from 'react-icons/fa';
 import { getImageUrl, fetchSeasonEpisodes, fetchCollection, requests } from '../api/tmdb';
 import { UserAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { db } from '../firebase';
 import { arrayUnion, doc, setDoc, getDoc } from 'firebase/firestore';
 import MovieCard from '../components/MovieCard';
@@ -23,6 +24,7 @@ const MovieDetails = () => {
   const [selectedEpisode, setSelectedEpisode] = useState(1);
   const [episodesList, setEpisodesList] = useState([]);
   const { user } = UserAuth();
+  const { addNotification } = useNotifications();
 
   useEffect(() => {
     // Clear movie state when navigating to a new ID or category
@@ -111,9 +113,9 @@ const MovieDetails = () => {
           poster_path: movie.poster_path,
         })
       }, { merge: true });
-      alert('Película guardada');
+      addNotification('Lista actualizada', `"${movie.title || movie.name}" ahora está en tu biblioteca`, 'success');
     } else {
-      alert('Por favor inicia sesión para guardar una película');
+      addNotification('Error al guardar', 'Debes iniciar sesión para personalizar tu lista', 'error');
     }
   };
 
@@ -160,10 +162,10 @@ const MovieDetails = () => {
       
       setMovie(prev => ({ ...prev, video_url_spanish: fastreamInput.trim(), isExclusive: true }));
       setFastreamInput('');
-      alert("¡Enlace guardado! La película ahora es Premium.");
+      addNotification('Modo Premium Activo', '¡Enlace guardado! La película ahora está disponible en HD.', 'success');
     } catch (error) {
       console.error("Error guardando enlace rápido:", error);
-      alert("Error al guardar enlace.");
+      addNotification('Error en Admin', 'No se pudo guardar el enlace premium', 'error');
     }
     setIsSavingUrl(false);
   };

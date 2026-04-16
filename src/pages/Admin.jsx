@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, setDoc, getDoc } from 'firebase/firestore';
-import { FaPlus, FaTrash, FaImage, FaFilm, FaInfoCircle, FaEye, FaSearch, FaLink, FaEdit, FaSave, FaTimes, FaHome, FaArrowUp, FaArrowDown, FaCheckCircle, FaTimesCircle, FaTags, FaLanguage } from 'react-icons/fa';
+import { collection, addDoc, getDocs, deleteDoc, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { FaPlus, FaTrash, FaImage, FaFilm, FaInfoCircle, FaEye, FaSearch, FaLink, FaEdit, FaSave, FaTimes, FaHome, FaArrowUp, FaArrowDown, FaCheckCircle, FaTimesCircle, FaTags, FaLanguage, FaCog, FaCalendarAlt, FaPowerOff } from 'react-icons/fa';
+import { useNotifications } from '../context/NotificationContext';
 import './Admin.css';
 
 const Admin = () => {
@@ -20,6 +21,13 @@ const Admin = () => {
   const [loadingMovies, setLoadingMovies] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [mediaType, setMediaType] = useState('movie'); // 'movie' or 'tv'
+  const { addNotification } = useNotifications();
+  
+  // App Config States
+  const [expiryDate, setExpiryDate] = useState('');
+  const [isLocked, setIsLocked] = useState(false);
+  const [isUpdatingLock, setIsUpdatingLock] = useState(false);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
 
   // Homepage Config States
   const [sections, setSections] = useState([]);
@@ -57,7 +65,31 @@ const Admin = () => {
     setLoadingHome(false);
   };
 
-  useEffect(() => { fetchExclusive(); fetchHomeConfig(); }, []);
+  const fetchAppConfig = async () => {
+    try {
+      const snap = await getDoc(doc(db, 'settings', 'app_config'));
+      if (snap.exists()) {
+        const date = snap.data().expiryDate;
+        // Convert ISO to datetime-local format (YYYY-MM-DDTHH:MM)
+        if (date) {
+            const d = new Date(date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            setExpiryDate(`${year}-${month}-${day}T${hours}:${minutes}`);
+        }
+        setIsLocked(!!snap.data().isLocked);
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  useEffect(() => { 
+    fetchExclusive(); 
+    fetchHomeConfig(); 
+    fetchAppConfig();
+  }, []);
 
   const fetchFromTMDB = async () => {
     if (!tmdbId) return alert('Ingresa un ID de TMDB');
@@ -112,11 +144,41 @@ const Admin = () => {
   };
 
   // Homepage Methods (Same as before but simplified)
-  const handleCreateSection = () => {
-    if (!newSectionLabel || !newSectionId) return alert('Campos vacíos');
-    const safeId = newSectionId.toLowerCase().replace(/\s+/g, '_');
-    setSections([...sections, { id: safeId, label: newSectionLabel, visible: true, order: sections.length + 1, type: 'custom' }]);
-    setNewSectionLabel(''); setNewSectionId('');
+  const toggleAppLock = async () => {
+    const newState = !isLocked;
+    setIsUpdatingLock(true);
+    try {
+      await setDoc(doc(db, 'settings', 'app_config'), { 
+        isLocked: newState,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      setIsLocked(newState);
+      addNotification('Estado Actualizado', `Servidor ${newState ? 'Bloqueado' : 'Activo'}`, 'info');
+    } catch (err) {
+      console.error(err);
+      addNotification('Error', 'No se pudo cambiar el estado.', 'error');
+    }
+    setIsUpdatingLock(false);
+  };
+
+  const handleSaveConfig = async () => {
+    setIsSavingConfig(true);
+    try {
+      // Tomamos el valor local del input y lo convertimos a objeto Date (interpretado localmente)
+      const localDate = new Date(expiryDate);
+      const isoDate = localDate.toISOString(); 
+      
+      await setDoc(doc(db, 'settings', 'app_config'), { 
+        expiryDate: isoDate,
+        isLocked: isLocked,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      addNotification('Configuración Guardada', 'Se actualizó el control de acceso.', 'success');
+    } catch (err) {
+      console.error(err);
+      addNotification('Error', 'No se pudo guardar la configuración.', 'error');
+    }
+    setIsSavingConfig(false);
   };
 
   return (
@@ -126,10 +188,11 @@ const Admin = () => {
         <div className="admin-tabs">
           <button className={activeTab === 'movies' ? 'active' : ''} onClick={() => setActiveTab('movies')}><FaFilm /> Películas</button>
           <button className={activeTab === 'homepage' ? 'active' : ''} onClick={() => setActiveTab('homepage')}><FaHome /> Portada</button>
+          <button className={activeTab === 'config' ? 'active' : ''} onClick={() => setActiveTab('config')}><FaCog /> Configuración</button>
         </div>
       </div>
 
-      {activeTab === 'movies' ? (
+      {activeTab === 'movies' && (
         <div className="admin-movies-tab">
           <div className="admin-sections">
             <div className="admin-section-card glass">
@@ -191,31 +254,118 @@ const Admin = () => {
             </div>
           </div>
         </div>
-      ) : (
+      )}
+
+      {activeTab === 'homepage' && (
         <div className="admin-homepage-tab">
            <div className="admin-section-card glass">
              <div className="section-header-row">
                <h2>Estructura de la Portada</h2>
-               <button className="save-config-btn" onClick={async () => { await setDoc(doc(db, 'settings', 'homepage_sections'), { sections }); alert('Guardado'); }}><FaSave /> Guardar Todo</button>
+               <button className="save-config-btn" onClick={async () => { await setDoc(doc(db, 'settings', 'homepage_sections'), { sections }); addNotification('Éxito', 'Configuración de portada guardada', 'success'); }}><FaSave /> Guardar Todo</button>
              </div>
              <div className="create-section-box">
                 <h4><FaPlus /> Nueva Sección</h4>
                 <div className="create-inputs">
                   <input placeholder="Nombre (ej: Acción)" value={newSectionLabel} onChange={(e) => setNewSectionLabel(e.target.value)} />
-                  <input placeholder="ID (ej: accion)" value={newSectionId} onChange={(e) => setNewSectionId(e.target.value)} />
-                  <button onClick={handleCreateSection}>Añadir</button>
+                  <input placeholder="ID (ej: accion)" value={newSectionId} onChange={(e) => {
+                    const val = e.target.value.toLowerCase().replace(/\s+/g, '_');
+                    setNewSectionId(val);
+                  }} />
+                  <button onClick={() => {
+                    if (!newSectionLabel || !newSectionId) return addNotification('Error', 'Campos vacíos', 'warning');
+                    setSections([...sections, { id: newSectionId, label: newSectionLabel, visible: true, order: sections.length + 1, type: 'custom' }]);
+                    setNewSectionLabel(''); setNewSectionId('');
+                  }}>Añadir</button>
                 </div>
              </div>
              <div className="home-config-list">
                {sections.map((section, index) => (
                  <div key={section.id} className={`config-item ${!section.visible ? 'hidden-item' : ''}`}>
-                   <div className="item-order-controls"><FaArrowUp onClick={() => { if(index > 0) { const ns = [...sections]; [ns[index], ns[index-1]] = [ns[index-1], ns[index]]; setSections(ns.map((s,i)=>({...s,order:i+1}))); } }} /> <FaArrowDown onClick={() => { if(index < sections.length-1) { const ns = [...sections]; [ns[index], ns[index+1]] = [ns[index+1], ns[index]]; setSections(ns.map((s,i)=>({...s,order:i+1}))); } }} /></div>
+                   <div className="item-order-controls">
+                     <FaArrowUp onClick={() => { if(index > 0) { const ns = [...sections]; [ns[index], ns[index-1]] = [ns[index-1], ns[index]]; setSections(ns.map((s,i)=>({...s,order:i+1}))); } }} /> 
+                     <FaArrowDown onClick={() => { if(index < sections.length-1) { const ns = [...sections]; [ns[index], ns[index+1]] = [ns[index+1], ns[index]]; setSections(ns.map((s,i)=>({...s,order:i+1}))); } }} />
+                   </div>
                    <div className="item-info"><input value={section.label} onChange={(e) => { const v = e.target.value; setSections(prev => prev.map(s => s.id === section.id ? { ...s, label: v } : s)); }} /></div>
                    <div className="item-visibility"><button className={section.visible? 'v':'h'} onClick={() => setSections(sections.map(s => s.id === section.id ? {...s, visible: !s.visible} : s))}>{section.visible ? 'Visible' : 'Oculto'}</button></div>
                  </div>
                ))}
              </div>
            </div>
+        </div>
+      )}
+
+      {activeTab === 'config' && (
+        <div className="admin-config-tab animate-fade-in">
+          <div className="admin-section-card glass highlight-card">
+            <div className="section-header-row">
+              <h2><FaPowerOff className="accent-icon" /> Control de Acceso Remoto</h2>
+              <span className="badge-beta">Beta Control</span>
+            </div>
+            
+            <p className="admin-note">
+              Desde aquí controlas hasta cuándo estará disponible la aplicación. 
+              Si la fecha es anterior a "ahora", la APK se bloqueará automáticamente.
+            </p>
+
+            <div className="config-grid">
+              <div className="config-item-box">
+                <label><FaCalendarAlt /> Fecha y Hora de Expiración</label>
+                <div className="date-input-wrapper">
+                  <input 
+                    type="datetime-local" 
+                    value={expiryDate} 
+                    onChange={(e) => setExpiryDate(e.target.value)}
+                    className="admin-date-input"
+                  />
+                </div>
+                <p className="helper-text">La aplicación se desactivará al llegar a este momento.</p>
+              </div>
+
+              <div className="config-item-box lock-switch-container">
+                <label><FaPowerOff /> Estado del Servidor</label>
+                <button 
+                  className={`lock-toggle-btn ${isLocked ? 'locked' : 'unlocked'} ${isUpdatingLock ? 'busy' : ''}`}
+                  onClick={toggleAppLock}
+                  disabled={isUpdatingLock}
+                >
+                  <div className="toggle-circle">
+                    {isUpdatingLock && <div className="spinner-mini"></div>}
+                  </div>
+                  <span>{isLocked ? 'ACCESO BLOQUEADO' : 'ACCESO ACTIVO'}</span>
+                </button>
+                <p className="helper-text">
+                  {isUpdatingLock ? 'Sincronizando con el servidor...' : 'Esto bloquea la app de inmediato, ignorando la fecha.'}
+                </p>
+              </div>
+
+              <div className="config-item-box kill-switch-box">
+                <label>Acciones Rápidas</label>
+                <div className="quick-actions">
+                  <button className="btn-quick" onClick={() => {
+                    const d = new Date();
+                    d.setHours(23, 59, 0, 0);
+                    setExpiryDate(d.toISOString().slice(0,16));
+                  }}>Hoy a medianoche</button>
+                  <button className="btn-quick" onClick={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + 1);
+                    d.setHours(23, 59, 0, 0);
+                    setExpiryDate(d.toISOString().slice(0,16));
+                  }}>Mañana medianoche</button>
+                </div>
+              </div>
+            </div>
+
+            <div className="save-footer">
+              <button 
+                className="submit-btn publish big-btn" 
+                onClick={handleSaveConfig}
+                disabled={isSavingConfig || !expiryDate}
+              >
+                {isSavingConfig ? 'Guardando...' : <><FaSave /> Actualizar Acceso Remoto</>}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

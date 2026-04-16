@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth } from '../firebase';
 import Logo from '../components/Logo';
@@ -27,6 +28,7 @@ const Login = () => {
   const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0]);
   const [isLoading, setIsLoading] = useState(false);
   const { logIn, signUp } = UserAuth();
+  const { addNotification } = useNotifications();
   const navigate = useNavigate();
 
   // Load remembered email on mount
@@ -55,12 +57,16 @@ const Login = () => {
 
       if (isLogin) {
         await logIn(email, password);
+        addNotification('Bienvenido', 'Has iniciado sesión correctamente en ZenPlus', 'success');
       } else {
         await signUp(email, password, selectedAvatar);
+        addNotification('Cuenta creada', 'Bienvenido a la legión, disfruta del contenido', 'success');
       }
       navigate('/');
     } catch (err) {
-      setError(err.message.replace('Firebase:', '').replace(/auth\//, '').trim());
+      const errorMsg = err.message.replace('Firebase:', '').replace(/auth\//, '').trim();
+      setError(errorMsg);
+      addNotification('Error de acceso', errorMsg, 'error');
     }
     setIsLoading(false);
   };

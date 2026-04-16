@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Hero from '../components/Hero';
+import ExploreStrip from '../components/ExploreStrip';
 import MovieRow from '../components/MovieRow';
 import { fetchMovies, requests } from '../api/tmdb';
 import { db } from '../firebase';
@@ -141,7 +142,12 @@ const Home = () => {
             // Only show exclusive if not empty
             if (section.id === 'exclusive' && rowData.length === 0) return null;
             
-            return <MovieRow key={section.id} title={section.label} movies={rowData} />;
+            return (
+              <div key={section.id}>
+                {section.id === 'netflixOriginals' && <ExploreStrip />}
+                <MovieRow title={section.label} movies={rowData} />
+              </div>
+            );
           })
         }
       </div>

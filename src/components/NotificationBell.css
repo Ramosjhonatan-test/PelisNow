@@ -1,0 +1,63 @@
+.notification-bell-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.bell-button {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.35rem;
+    cursor: pointer;
+    position: relative;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    border-radius: 50%;
+}
+
+.bell-button:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.bell-button.has-unread {
+    color: var(--accent-color);
+    animation: bellShake 2s infinite ease-in-out;
+}
+
+@keyframes bellShake {
+    0%, 100% { transform: rotate(0); }
+    10%, 30% { transform: rotate(10deg); }
+    20%, 40% { transform: rotate(-10deg); }
+    50% { transform: rotate(0); }
+}
+
+.unread-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: #e50914;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    box-shadow: 0 0 10px rgba(229, 9, 20, 0.5);
+    border: 2px solid #0f1014;
+}
+
+@media (max-width: 768px) {
+    .bell-button {
+        font-size: 1.2rem;
+        padding: 6px;
+    }
+}

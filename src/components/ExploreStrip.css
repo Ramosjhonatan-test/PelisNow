@@ -1,0 +1,371 @@
+/* ===== EXPLORE STRIP – Premium Section ===== */
+
+.explore-strip-container {
+    margin-top: 25px;
+    margin-bottom: 30px;
+    position: relative;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+/* ── Header Row ── */
+.explore-strip-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.explore-strip-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.explore-title-icon {
+    font-size: 1.3rem;
+    color: var(--accent-color);
+    filter: drop-shadow(0 0 6px var(--accent-glow));
+    animation: compassSpin 8s linear infinite;
+}
+
+@keyframes compassSpin {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(15deg); }
+    50% { transform: rotate(0deg); }
+    75% { transform: rotate(-15deg); }
+}
+
+.explore-strip-title {
+    font-size: 1.5rem;
+    font-family: var(--font-cinematic);
+    letter-spacing: 2px;
+    color: white;
+    text-transform: uppercase;
+}
+
+.explore-see-all {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent-color);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.explore-see-all:hover {
+    gap: 10px;
+    opacity: 0.8;
+}
+
+.explore-see-all svg {
+    font-size: 0.7rem;
+    transition: transform 0.3s ease;
+}
+
+.explore-see-all:hover svg {
+    transform: translateX(3px);
+}
+/* ── Catalog Search Bar ── */
+.catalog-search-wrap {
+    width: 100%;
+    margin-bottom: 5px;
+}
+
+.catalog-search-form {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 2px 2px 2px 15px;
+    transition: all 0.3s ease;
+}
+
+.catalog-search-form:focus-within {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 15px rgba(229, 9, 20, 0.15);
+}
+
+.catalog-search-icon {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 1rem;
+}
+
+.catalog-search-form input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 12px 10px;
+    color: white;
+    font-size: 1rem;
+    outline: none;
+}
+
+.catalog-search-form input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.catalog-search-btn {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.catalog-search-btn:hover {
+    background: #ff0f1f;
+    transform: scale(1.02);
+}
+
+@media (max-width: 768px) {
+    .catalog-search-form input {
+        padding: 10px 8px;
+        font-size: 16px; /* Prevents iOS auto-zoom on focus */
+    }
+    .catalog-search-btn {
+        padding: 8px 15px;
+        font-size: 0.8rem;
+    }
+    .catalog-search-wrap {
+        /* Keep the search bar in document flow so it scrolls with the page */
+        position: relative;
+        z-index: 10;
+    }
+}
+
+/* ── Type Cards (Películas / Series) ── */
+.explore-type-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.explore-type-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    border-radius: 14px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    color: white;
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+    cursor: pointer;
+    overflow: hidden;
+    position: relative;
+}
+
+.explore-type-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    z-index: 0;
+}
+
+.explore-type-card:hover::after {
+    opacity: 1;
+}
+
+.explore-type-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.explore-type-card:active {
+    transform: scale(0.97);
+}
+
+.explore-type-card span {
+    position: relative;
+    z-index: 1;
+}
+
+.explore-type-icon-wrap {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: white;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+    transition: transform 0.3s ease;
+}
+
+.explore-type-card:hover .explore-type-icon-wrap {
+    transform: scale(1.1) rotate(-5deg);
+}
+
+.movie-gradient {
+    background: linear-gradient(135deg, #e50914, #ff4d4d);
+    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.4);
+}
+
+.series-gradient {
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+/* ── Genre Chips (Horizontal Scroll) ── */
+.explore-genres-scroll {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-snap-type: x proximity;
+}
+
+.explore-genres-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.explore-genre-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    border-radius: 50px;
+    white-space: nowrap;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    scroll-snap-align: start;
+    cursor: pointer;
+}
+
+.genre-chip-icon {
+    font-size: 0.8rem;
+    color: var(--chip-color);
+    filter: drop-shadow(0 0 4px var(--chip-color));
+    transition: transform 0.3s ease;
+}
+
+.explore-genre-chip:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--chip-color);
+    box-shadow: 0 0 20px color-mix(in srgb, var(--chip-color) 25%, transparent);
+    transform: translateY(-2px);
+}
+
+.explore-genre-chip:hover .genre-chip-icon {
+    transform: scale(1.2);
+}
+
+.explore-genre-chip:active {
+    transform: scale(0.95);
+}
+
+/* ===== RESPONSIVE ===== */
+
+/* Tablet */
+@media (max-width: 1024px) {
+    .explore-type-card {
+        padding: 14px 18px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .explore-strip-container {
+        margin-top: 15px;
+        margin-bottom: 15px;
+        gap: 14px;
+    }
+
+    .explore-strip-title {
+        font-size: 1.2rem;
+        letter-spacing: 1.5px;
+    }
+
+    .explore-title-icon {
+        font-size: 1.1rem;
+    }
+
+    .explore-see-all {
+        font-size: 0.8rem;
+    }
+
+    .explore-type-row {
+        gap: 10px;
+    }
+
+    .explore-type-card {
+        padding: 14px 16px;
+        gap: 12px;
+        border-radius: 12px;
+    }
+
+    .explore-type-icon-wrap {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        font-size: 1rem;
+    }
+
+    .explore-type-card span {
+        font-size: 0.9rem;
+    }
+
+    .explore-genre-chip {
+        padding: 8px 15px;
+        font-size: 0.8rem;
+    }
+
+    .genre-chip-icon {
+        font-size: 0.75rem;
+    }
+}
+
+/* Small mobile */
+@media (max-width: 400px) {
+    .explore-type-card {
+        padding: 12px 14px;
+        gap: 10px;
+    }
+
+    .explore-type-icon-wrap {
+        width: 32px;
+        height: 32px;
+        font-size: 0.85rem;
+    }
+
+    .explore-type-card span {
+        font-size: 0.85rem;
+    }
+
+    .explore-genre-chip {
+        padding: 7px 12px;
+        font-size: 0.75rem;
+    }
+}

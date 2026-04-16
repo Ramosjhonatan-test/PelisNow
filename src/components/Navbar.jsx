@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaSearch, FaBars, FaTimes, FaStar } from 'react-icons/fa';
+import { FaSearch, FaBars, FaTimes, FaStar, FaChevronLeft } from 'react-icons/fa';
 import { UserAuth } from '../context/AuthContext';
 import { searchMovies, getImageUrl } from '../api/tmdb';
+import NotificationBell from './NotificationBell';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -11,12 +12,14 @@ const Navbar = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [searchHistory, setSearchHistory] = useState([]);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const { user, logOut } = UserAuth();
   const navigate = useNavigate();
   const searchRef = useRef(null);
+  const mobileInputRef = useRef(null);
 
   const isAdmin = user?.email === 'danielacopana@gmail.com';
 
@@ -35,6 +38,13 @@ const Navbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Sync focus to mobile input when overlay opens
+  useEffect(() => {
+    if (showMobileSearch && mobileInputRef.current) {
+       mobileInputRef.current.focus();
+    }
+  }, [showMobileSearch]);
 
   // Live Search Logic (Debounce)
   useEffect(() => {
@@ -57,11 +67,12 @@ const Navbar = () => {
     const handleClickOutside = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setSearchFocused(false);
+        if (!searchTerm) setShowMobileSearch(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [searchTerm]);
 
   const addToHistory = (term) => {
     if (!term.trim()) return;
@@ -85,13 +96,14 @@ const Navbar = () => {
       navigate(`/search?q=${searchTerm}`);
       setSearchResults([]);
       setSearchFocused(false);
+      setShowMobileSearch(false);
     }
   };
 
   const clearSearch = () => {
     setSearchTerm('');
     setSearchResults([]);
-    setSearchFocused(false);
+    // Don't close overlay on clear, user might want to type something else
   };
 
   const handleLogout = async () => {
@@ -106,7 +118,28 @@ const Navbar = () => {
   };
 
   return (
-    <nav className={`navbar ${scrolled ? 'scrolled glass-nav' : ''}`}>
+    <nav className={`navbar ${scrolled ? 'scrolled glass-nav' : ''} ${showMobileSearch ? 'search-active' : ''}`}>
+      
+      {/* Search Overlay (Mobile) */}
+      <div className={`mobile-search-overlay ${showMobileSearch ? 'open' : ''}`}>
+         <div className="mobile-search-bar">
+            <button className="back-search-btn" onClick={() => setShowMobileSearch(false)}>
+               <FaChevronLeft />
+            </button>
+            <form onSubmit={handleSearch} className="mobile-search-form">
+               <input 
+                  ref={mobileInputRef}
+                  type="text" 
+                  placeholder="Buscar títulos, géneros..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setSearchFocused(true)}
+               />
+               {searchTerm && <FaTimes className="mobile-clear-icon" onClick={clearSearch} />}
+            </form>
+         </div>
+      </div>
+
       <div className="nav-left">
         <Link to="/" className='logo-premium'>ZEN<span>PLUS</span></Link>
         <ul className='nav-links desktop-only'>
@@ -118,7 +151,8 @@ const Navbar = () => {
       
       <div className='nav-right'>
         <div className="search-wrapper" ref={searchRef}>
-          <form onSubmit={handleSearch} className={`search-container ${searchFocused || searchTerm ? 'expanded' : ''}`}>
+          {/* Desktop Search */}
+          <form onSubmit={handleSearch} className={`search-container desktop-only ${searchFocused || searchTerm ? 'expanded' : ''}`}>
             <FaSearch className='search-icon' onClick={() => setSearchFocused(true)} />
             <input 
               type="text" 
@@ -130,9 +164,14 @@ const Navbar = () => {
             {searchTerm && <FaTimes className="clear-search-icon" onClick={clearSearch} />}
           </form>
 
+          {/* Mobile Search Trigger */}
+          <div className="mobile-search-trigger mobile-only" onClick={() => setShowMobileSearch(true)}>
+             <FaSearch className="search-icon" />
+          </div>
+
           {/* Live Search Results / History Dropdown */}
-          {searchFocused && (
-            <div className="search-results-dropdown glass-dropdown">
+          {(searchFocused || (showMobileSearch && searchTerm)) && (
+            <div className={`search-results-dropdown glass-dropdown ${showMobileSearch ? 'mobile-dropdown' : ''}`}>
               {searchTerm.trim().length > 1 ? (
                 isLoading ? (
                   <div className="search-loading">Buscando...</div>
@@ -146,6 +185,7 @@ const Navbar = () => {
                         onClick={() => {
                           addToHistory(result.title || result.name);
                           setSearchFocused(false);
+                          setShowMobileSearch(false);
                           setSearchTerm('');
                         }}
                       >
@@ -191,6 +231,8 @@ const Navbar = () => {
             </div>
           )}
         </div>
+
+        <NotificationBell />
 
         {user ? (
           <div className="user-profile-menu">

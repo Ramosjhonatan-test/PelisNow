@@ -5,11 +5,13 @@ import { getImageUrl } from '../api/tmdb';
 import { db } from '../firebase';
 import { doc, setDoc, arrayUnion } from 'firebase/firestore';
 import { UserAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import './MovieCard.css';
 
 const MovieCard = ({ movie }) => {
   const [hover, setHover] = useState(false);
   const { user } = UserAuth();
+  const { addNotification } = useNotifications();
 
   const saveMovie = async (e) => {
     e.preventDefault();
@@ -22,9 +24,9 @@ const MovieCard = ({ movie }) => {
           poster_path: movie.poster_path,
         })
       }, { merge: true });
-      alert('Película guardada');
+      addNotification('¡Guardado!', `"${movie.title || movie.name}" se añadió a tu lista`, 'success');
     } else {
-      alert('Inicia sesión para guardar películas');
+      addNotification('Acción necesaria', 'Inicia sesión para guardar películas en tu lista', 'warning');
     }
   };
 
