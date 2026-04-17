@@ -1,8 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaSearch, FaBars, FaTimes, FaStar, FaChevronLeft } from 'react-icons/fa';
+import { 
+  FaSearch, FaBars, FaTimes, FaStar, FaChevronLeft, FaKey, 
+  FaUser, FaHistory, FaCrown, FaSignOutAlt, FaGem, 
+  FaCalendarAlt, FaUserCog, FaUserShield, FaBookmark 
+} from 'react-icons/fa';
 import { UserAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { searchMovies, getImageUrl } from '../api/tmdb';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import NotificationBell from './NotificationBell';
 import './Navbar.css';
 
@@ -16,10 +22,18 @@ const Navbar = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const { user, logOut } = UserAuth();
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPass, setCurrentPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [passLoading, setPassLoading] = useState(false);
+  const [passError, setPassError] = useState('');
+  
+  const { user, logOut, userDoc } = UserAuth();
+  const { addNotification } = useNotifications();
   const navigate = useNavigate();
   const searchRef = useRef(null);
   const mobileInputRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   const isAdmin = user?.email === 'danielacopana@gmail.com';
 
@@ -62,12 +76,15 @@ const Navbar = () => {
     }
   }, [searchTerm]);
 
-  // Close search results when clicking outside
+  // Close dropdown or search results when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setSearchFocused(false);
         if (!searchTerm) setShowMobileSearch(false);
+      }
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -103,7 +120,6 @@ const Navbar = () => {
   const clearSearch = () => {
     setSearchTerm('');
     setSearchResults([]);
-    // Don't close overlay on clear, user might want to type something else
   };
 
   const handleLogout = async () => {
@@ -113,11 +129,47 @@ const Navbar = () => {
   };
 
   const getAvatarLetter = () => {
-     if(user?.email && typeof user.email === 'string') return user.email.charAt(0).toUpperCase();
+     if (userDoc?.displayName) return userDoc.displayName.charAt(0).toUpperCase();
+     if (user?.email) return user.email.charAt(0).toUpperCase();
      return 'U';
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return null;
+    return new Date(dateString).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  const handleChangePassword = async () => {
+    setPassError('');
+    if (!currentPass || !newPass) {
+      setPassError('Completa ambos campos.');
+      return;
+    }
+    if (newPass.length < 6) {
+      setPassError('La nueva contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+    setPassLoading(true);
+    try {
+      const credential = EmailAuthProvider.credential(user.email, currentPass);
+      await reauthenticateWithCredential(user, credential);
+      await updatePassword(user, newPass);
+      addNotification('Éxito', 'Tu contraseña ha sido actualizada correctamente.', 'success');
+      setShowPasswordModal(false);
+      setCurrentPass('');
+      setNewPass('');
+    } catch (err) {
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setPassError('La contraseña actual es incorrecta.');
+      } else {
+        setPassError('Error al cambiar la contraseña. Inténtalo de nuevo.');
+      }
+    }
+    setPassLoading(false);
+  };
+
   return (
+    <>
     <nav className={`navbar ${scrolled ? 'scrolled glass-nav' : ''} ${showMobileSearch ? 'search-active' : ''}`}>
       
       {/* Search Overlay (Mobile) */}
@@ -235,28 +287,80 @@ const Navbar = () => {
         <NotificationBell />
 
         {user ? (
-          <div className="user-profile-menu">
-            <div className="avatar-btn" onClick={() => setShowDropdown(!showDropdown)}>
-              {user.photoURL ? (
-                <img src={user.photoURL} alt="User Avatar" />
+          <div className="user-profile-menu" ref={dropdownRef}>
+            <div className={`avatar-btn ${userDoc?.accountExpiry ? 'premium-border' : ''}`} onClick={() => setShowDropdown(!showDropdown)}>
+              {userDoc?.photoURL ? (
+                <img src={userDoc.photoURL} alt="User Avatar" />
               ) : (
                 <div className="avatar-placeholder">{getAvatarLetter()}</div>
               )}
             </div>
             
             {showDropdown && (
-              <div className="profile-dropdown glass-dropdown">
-                <div className="dropdown-header">
-                  <p className="user-email">{user.email || 'Invitado'}</p>
+              <div className="profile-dropdown premium-account-panel animate-slide-up">
+                <div className="dropdown-header-card">
+                   <div className="header-user-info">
+                      <div className="large-avatar">
+                        {userDoc?.photoURL ? <img src={userDoc.photoURL} alt="Profile" /> : <span>{getAvatarLetter()}</span>}
+                      </div>
+                      <div className="user-meta-info">
+                        <h4>{userDoc?.displayName || 'Usuario'}</h4>
+                        <p>{user.email}</p>
+                      </div>
+                   </div>
+                   
+                   <div className="account-status-badge">
+                      {userDoc?.accountExpiry ? (
+                        <div className="plan-pill vip">
+                           <FaCrown /> <span>Plan VIP</span>
+                        </div>
+                      ) : (
+                        <div className="plan-pill standard">
+                           <FaUser /> <span>Plan Estándar</span>
+                        </div>
+                      )}
+                   </div>
                 </div>
-                <ul className="dropdown-options">
-                  {isAdmin && (
-                    <li><Link to="/admin" onClick={() => setShowDropdown(false)}>⚙️ Panel Admin</Link></li>
-                  )}
-                  <li><Link to="/my-list" onClick={() => setShowDropdown(false)}>🔖 Mi Lista</Link></li>
-                  <li className="divider"></li>
-                  <li><button onClick={handleLogout} className="logout-action">Cerrar sesión</button></li>
-                </ul>
+
+                {userDoc?.accountExpiry && (
+                   <div className="expiry-info-box">
+                      <FaCalendarAlt className="info-icon" />
+                      <div className="expiry-text">
+                         <span>Vence el:</span>
+                         <p>{formatDate(userDoc.accountExpiry)}</p>
+                      </div>
+                   </div>
+                )}
+
+                <div className="dropdown-sections">
+                  <div className="section-group">
+                    <p className="group-title">Navegación</p>
+                    <Link to="/my-list" onClick={() => setShowDropdown(false)} className="dropdown-item">
+                      <FaBookmark /> <span>Mi Lista</span>
+                    </Link>
+                    <Link to="/discover" onClick={() => setShowDropdown(false)} className="dropdown-item">
+                      <FaHistory /> <span>Explorar</span>
+                    </Link>
+                  </div>
+
+                  <div className="section-group">
+                    <p className="group-title">Configuración</p>
+                    {isAdmin && (
+                      <Link to="/admin" onClick={() => setShowDropdown(false)} className="dropdown-item admin-link">
+                        <FaUserShield /> <span>Panel Administrativo</span>
+                      </Link>
+                    )}
+                    <button onClick={() => { setShowDropdown(false); setShowPasswordModal(true); }} className="dropdown-item">
+                      <FaKey /> <span>Seguridad</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="dropdown-footer">
+                  <button onClick={handleLogout} className="logout-btn-premium">
+                    <FaSignOutAlt /> <span>Cerrar Sesión</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -271,7 +375,6 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Floating Glass Mobile Menu */}
       <div className={`mobile-glass-menu ${showMobileMenu ? 'open' : ''}`}>
          <ul className="mobile-nav-links">
             <li><Link to="/" onClick={() => setShowMobileMenu(false)}>Inicio</Link></li>
@@ -281,6 +384,41 @@ const Navbar = () => {
          </ul>
       </div>
     </nav>
+
+    {showPasswordModal && (
+      <div className="password-modal-overlay" onClick={() => setShowPasswordModal(false)}>
+        <div className="password-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="pm-header">
+            <FaKey />
+            <h3>Cambiar Contraseña</h3>
+            <button className="pm-close" onClick={() => setShowPasswordModal(false)}><FaTimes /></button>
+          </div>
+          {passError && <div className="pm-error">⚠️ {passError}</div>}
+          <div className="pm-field">
+            <label>Contraseña actual</label>
+            <input 
+              type="password" 
+              value={currentPass} 
+              onChange={(e) => setCurrentPass(e.target.value)}
+              placeholder="Tu contraseña actual"
+            />
+          </div>
+          <div className="pm-field">
+            <label>Nueva contraseña</label>
+            <input 
+              type="password" 
+              value={newPass} 
+              onChange={(e) => setNewPass(e.target.value)}
+              placeholder="Mínimo 6 caracteres"
+            />
+          </div>
+          <button className="pm-submit" onClick={handleChangePassword} disabled={passLoading}>
+            {passLoading ? 'Cambiando...' : 'Actualizar Contraseña'}
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 

@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { App as CapApp } from '@capacitor/app';
-import { Capacitor } from '@capacitor/core'; // Importante para detectar plataforma
+import { Device } from '@capacitor/device';
+import { Capacitor } from '@capacitor/core';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -16,8 +17,7 @@ import { UserAuth } from './context/AuthContext';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
 import NotificationToast from './components/NotificationToast';
 import { db } from './firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { useState } from 'react';
+import { doc, onSnapshot, collection, query, orderBy, getDocs, deleteDoc, setDoc } from 'firebase/firestore';
 
 function AppContent() {
   const { user } = UserAuth();
@@ -27,20 +27,93 @@ function AppContent() {
   const [appConfig, setAppConfig] = useState(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [userDoc, setUserDoc] = useState(null);
+  const [currentDeviceId, setCurrentDeviceId] = useState(null);
+  const [deviceInfo, setDeviceInfo] = useState({ model: 'N/A', manufacturer: 'N/A' });
+  const [isDeviceUnauthorized, setIsDeviceUnauthorized] = useState(false);
 
-  // Listener for user document (Status check)
+  // Fetch unique Device ID on mount (Native Only)
+  useEffect(() => {
+    const fetchId = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const idInfo = await Device.getId();
+          const moreInfo = await Device.getInfo();
+          setCurrentDeviceId(idInfo.identifier);
+          setDeviceInfo({
+            model: moreInfo.model || 'N/A',
+            manufacturer: moreInfo.manufacturer || 'N/A'
+          });
+        } catch (e) {
+          console.error("Error fetching device ID", e);
+        }
+      }
+    };
+    fetchId();
+  }, []);
+
+  // Listener for user document (Status & Device check)
   useEffect(() => {
     if (!user?.email) {
       setUserDoc(null);
+      setIsDeviceUnauthorized(false);
       return;
     }
-    const unsub = onSnapshot(doc(db, 'users', user.email), (snap) => {
+    const unsub = onSnapshot(doc(db, 'users', user.email), async (snap) => {
       if (snap.exists()) {
-        setUserDoc(snap.data());
+        const data = snap.data();
+        setUserDoc(data);
+
+        // DEVICE LOCK LOGIC (Native Only)
+        if (Capacitor.isNativePlatform() && currentDeviceId) {
+          if (!data.deviceId) {
+            // First time: Bind current device with extra info
+            try {
+              await setDoc(doc(db, 'users', user.email), { 
+                deviceId: currentDeviceId,
+                deviceModel: deviceInfo.model,
+                deviceManufacturer: deviceInfo.manufacturer,
+                deviceBindDate: new Date().toISOString()
+              }, { merge: true });
+            } catch (e) {}
+          } else if (data.deviceId !== currentDeviceId) {
+            // Unauthorized device
+            setIsDeviceUnauthorized(true);
+          } else {
+            setIsDeviceUnauthorized(false);
+          }
+        }
       }
     });
     return () => unsub();
-  }, [user]);
+  }, [user, currentDeviceId]);
+
+  // Real-time notification listener from admin
+  useEffect(() => {
+    if (!user?.email) return;
+    const notifRef = collection(db, 'users', user.email, 'notifications');
+    const unsub = onSnapshot(notifRef, (snapshot) => {
+      snapshot.docChanges().forEach(async (change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          if (!data.read) {
+            // Play notification sound
+            try {
+              const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+              audio.volume = 0.5;
+              audio.play().catch(() => {});
+            } catch (e) {}
+            // Show notification
+            addNotification(data.title || 'Notificación', data.message || '', data.type || 'info');
+            // Mark as read / delete
+            try {
+              await deleteDoc(doc(db, 'users', user.email, 'notifications', change.doc.id));
+            } catch (e) {}
+          }
+        }
+      });
+    });
+    return () => unsub();
+  }, [user, addNotification]);
 
   // Remotely managed access control
   const [dbError, setDbError] = useState(null);
@@ -149,6 +222,122 @@ function AppContent() {
     return () => clearInterval(guestInterval);
   }, [user]);
 
+  // DEVICE UNAUTHORIZED SCREEN
+  if (isDeviceUnauthorized && location.pathname !== '/login') {
+    return (
+      <div className="expired-screen animate-fade-in" style={{
+        height: '100vh',
+        backgroundColor: '#0f1014',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        color: 'white',
+        textAlign: 'center',
+        padding: '20px',
+        fontFamily: 'sans-serif'
+      }}>
+        <div style={{ 
+          width: '100px', height: '100px', borderRadius: '50%', 
+          backgroundColor: 'rgba(229, 9, 20, 0.1)', display: 'flex',
+          justifyContent: 'center', alignItems: 'center', marginBottom: '30px',
+          border: '2px solid #e50914',
+          boxShadow: '0 0 30px rgba(229, 9, 20, 0.3)'
+        }}>
+          <span style={{ fontSize: '50px', color: '#e50914' }}>📱</span>
+        </div>
+        
+        <h1 style={{ color: '#fff', fontSize: '28px', marginBottom: '15px', fontWeight: 'bold' }}>
+          Dispositivo No Autorizado
+        </h1>
+        
+        <p style={{ fontSize: '16px', color: '#a0a0a0', maxWidth: '320px', marginBottom: '30px', lineHeight: '1.6' }}>
+          Tu cuenta de <strong>ZenPlus</strong> está vinculada a otro equipo. Por seguridad, solo se permite un dispositivo por cuenta.
+        </p>
+
+        <div style={{
+          background: 'rgba(255,255,255,0.03)',
+          padding: '25px',
+          borderRadius: '20px',
+          border: '1px solid rgba(255,255,255,0.08)',
+          marginBottom: '40px',
+          width: '100%',
+          maxWidth: '340px'
+        }}>
+          <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#888' }}>Para vincular este nuevo equipo:</p>
+          <p style={{ margin: '0', fontSize: '18px', fontWeight: 'bold', color: '#25D366' }}>
+            Soporte: +591 73225724
+          </p>
+        </div>
+
+        <div style={{ backgroundColor: '#1c1d22', padding: '15px 25px', borderRadius: '12px', border: '1px solid #333' }}>
+          <p style={{ margin: '0', fontSize: '12px', color: '#666' }}>Usuario:</p>
+          <p style={{ margin: '5px 0 0', fontSize: '13px', color: '#fff' }}>{user?.email}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // UPDATE REQUIRED SCREEN
+  if (appConfig?.isUpdateForced && location.pathname !== '/login') {
+    return (
+      <div className="expired-screen animate-fade-in" style={{
+        height: '100vh',
+        backgroundColor: '#050608',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        color: 'white',
+        textAlign: 'center',
+        padding: '30px',
+        fontFamily: 'sans-serif',
+        background: 'radial-gradient(circle at center, #1a1c23 0%, #050608 100%)'
+      }}>
+        <div style={{ 
+          width: '120px', height: '120px', borderRadius: '40px', 
+          backgroundColor: 'rgba(52, 152, 219, 0.1)', display: 'flex',
+          justifyContent: 'center', alignItems: 'center', marginBottom: '35px',
+          border: '2px solid #3498db',
+          boxShadow: '0 0 40px rgba(52, 152, 219, 0.2)',
+          transform: 'rotate(-5deg)'
+        }}>
+          <span style={{ fontSize: '60px', color: '#3498db' }}>🚀</span>
+        </div>
+        
+        <h1 style={{ color: '#fff', fontSize: '32px', marginBottom: '20px', fontWeight: 'bold', letterSpacing: '-1px' }}>
+          Nueva Versión Disponible
+        </h1>
+        
+        <div style={{
+          background: 'rgba(255,255,255,0.03)',
+          padding: '30px',
+          borderRadius: '24px',
+          border: '1px solid rgba(255,255,255,0.08)',
+          marginBottom: '40px',
+          width: '100%',
+          maxWidth: '400px',
+          backdropFilter: 'blur(10px)'
+        }}>
+          <p style={{ fontSize: '18px', color: '#e0e0e0', margin: '0 0 25px 0', lineHeight: '1.6' }}>
+            {appConfig.updateForceMsg || 'Hay una actualización importante lista para ti.'}
+          </p>
+          
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
+            <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#888' }}>Solicita el APK al administrador:</p>
+            <p style={{ margin: '0', fontSize: '22px', fontWeight: 'bold', color: '#25D366' }}>
+              WhatsApp: +591 73225724
+            </p>
+          </div>
+        </div>
+
+        <p style={{ fontSize: '12px', color: '#555' }}>
+          PelisNow v2.0 - Sistema de Control de Versiones
+        </p>
+      </div>
+    );
+  }
+
   // INDIVIDUAL USER BLOCK
   if (userDoc?.status === 'blocked') {
     return (
@@ -198,6 +387,64 @@ function AppContent() {
         <div style={{ backgroundColor: '#1c1d22', padding: '20px', borderRadius: '16px', border: '1px solid #333' }}>
           <p style={{ margin: '0', fontSize: '14px', color: '#888' }}>ID de Usuario:</p>
           <p style={{ margin: '5px 0', fontSize: '14px', fontWeight: 'bold', color: '#fff', wordBreak: 'break-all' }}>
+            {user?.email}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ACCOUNT EXPIRY CHECK (individual subscription duration)
+  const accountExpiry = userDoc?.accountExpiry ? new Date(userDoc.accountExpiry) : null;
+  const isAccountExpired = accountExpiry && new Date() > accountExpiry;
+  
+  if (isAccountExpired && location.pathname !== '/login') {
+    return (
+      <div style={{
+        height: '100vh',
+        backgroundColor: '#0f1014',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '20px',
+        fontFamily: 'sans-serif'
+      }}>
+        <div className="animate-fade-in" style={{
+          background: 'rgba(20, 21, 27, 0.95)',
+          border: '1px solid rgba(241, 196, 15, 0.2)',
+          borderRadius: '16px',
+          padding: '30px 25px',
+          maxWidth: '360px',
+          width: '100%',
+          textAlign: 'center',
+          backdropFilter: 'blur(20px)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+        }}>
+          <div style={{ fontSize: '36px', marginBottom: '12px' }}>📅</div>
+          
+          <h2 style={{ color: '#f1c40f', fontSize: '18px', marginBottom: '8px', fontWeight: '600' }}>
+            Suscripción Vencida
+          </h2>
+          
+          <p style={{ fontSize: '14px', color: '#a0a0a0', marginBottom: '20px', lineHeight: '1.5' }}>
+            Tu periodo de acceso a <strong style={{ color: '#fff' }}>ZenPlus</strong> ha finalizado.
+            Contacta al administrador para renovar tu suscripción.
+          </p>
+
+          <div style={{
+            background: 'rgba(255,255,255,0.05)',
+            padding: '15px',
+            borderRadius: '12px',
+            border: '1px solid rgba(255,255,255,0.08)',
+            marginBottom: '15px'
+          }}>
+            <p style={{ margin: '0', fontSize: '13px', color: '#888' }}>Soporte / Renovación:</p>
+            <p style={{ margin: '5px 0 0', fontSize: '16px', fontWeight: 'bold', color: '#25D366' }}>
+              +591 73225724
+            </p>
+          </div>
+
+          <p style={{ fontSize: '12px', color: '#555' }}>
             {user?.email}
           </p>
         </div>

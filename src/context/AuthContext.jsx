@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
 export function AuthContextProvider({ children }) {
   const [user, setUser] = useState({});
+  const [userDoc, setUserDoc] = useState(null);
 
   async function signUp(email, password, avatarUrl, fullName, phone) {
     try {
@@ -46,16 +47,33 @@ export function AuthContextProvider({ children }) {
   }
 
   useEffect(() => {
+    let unsubDoc = null;
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      
+      // Cleanup previous doc listener
+      if (unsubDoc) unsubDoc();
+
+      if (currentUser) {
+        unsubDoc = onSnapshot(doc(db, 'users', currentUser.email), (snap) => {
+          if (snap.exists()) {
+            setUserDoc(snap.data());
+          }
+        });
+      } else {
+        setUserDoc(null);
+      }
     });
+
     return () => {
       unsubscribe();
+      if (unsubDoc) unsubDoc();
     };
   }, []);
 
   return (
-    <AuthContext.Provider value={{ signUp, logIn, logOut, resetPassword, user }}>
+    <AuthContext.Provider value={{ signUp, logIn, logOut, resetPassword, user, userDoc }}>
       {children}
     </AuthContext.Provider>
   );
