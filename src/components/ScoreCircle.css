@@ -1,0 +1,33 @@
+/* Score Circle Styling */
+.score-circle-container {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.score-circle-progress {
+  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: rotate(-90deg);
+  transform-origin: center;
+}
+
+.score-text {
+  position: absolute;
+  color: white;
+  font-weight: 800;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+}
+
+.percent-symbol {
+  font-size: 0.5rem;
+  margin-top: -4px;
+  margin-left: 1px;
+}

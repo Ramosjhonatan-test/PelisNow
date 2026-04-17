@@ -60,6 +60,24 @@ export const fetchCollection = async (collectionId) => {
   }
 };
 
+export const fetchMovieLogo = async (id, type = 'movie') => {
+  try {
+    const res = await fetch(`${BASE_URL}/${type}/${id}/images?api_key=${API_KEY}`);
+    const data = await res.json();
+    if (data.logos && data.logos.length > 0) {
+      // Prefer english or spanish logos, or just take the first one
+      const preferred = data.logos.find(l => l.iso_639_1 === 'es') || 
+                        data.logos.find(l => l.iso_639_1 === 'en') || 
+                        data.logos[0];
+      return preferred ? preferred.file_path : null;
+    }
+    return null;
+  } catch (error) {
+    console.error("TMDB Logo Fetch Error:", error);
+    return null;
+  }
+};
+
 
 export const fetchSeasonEpisodes = async (tvId, seasonNumber) => {
   try {

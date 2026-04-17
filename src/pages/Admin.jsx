@@ -15,7 +15,8 @@ const Admin = () => {
   const [poster, setPoster] = useState('');
   const [backdrop, setBackdrop] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
-  const [videoUrlSpanish, setVideoUrlSpanish] = useState(''); // New Field
+  const [mixdropUrl, setMixdropUrl] = useState(''); // Mixdrop Field
+  const [alternativeUrl3, setAlternativeUrl3] = useState(''); // New Generic Field
   const [selectedSection, setSelectedSection] = useState('exclusive');
   const [exclusiveMovies, setExclusiveMovies] = useState([]);
   const [loadingMovies, setLoadingMovies] = useState(false);
@@ -128,9 +129,10 @@ const Admin = () => {
       const movieData = { 
         title, overview, poster_path: poster, backdrop_path: backdrop || poster, 
         video_url: videoUrl, 
-        video_url_spanish: videoUrlSpanish, // Saved here
+        mixdrop_url: mixdropUrl, 
+        alternative_url_3: alternativeUrl3, 
         tmdb_id: tmdbId || null, 
-        media_type: mediaType, // Saved here
+        media_type: mediaType, 
         sectionId: selectedSection, 
         isExclusive: true, 
         updatedAt: new Date().toISOString() 
@@ -144,7 +146,8 @@ const Admin = () => {
     } catch (err) { console.error(err); alert('Error'); }
   };
 
-  const resetForm = () => { setEditingId(null); setTmdbId(''); setTitle(''); setOverview(''); setPoster(''); setBackdrop(''); setVideoUrl(''); setVideoUrlSpanish(''); setSelectedSection('exclusive'); setMediaType('movie'); };
+  const resetForm = () => { setEditingId(null); setTmdbId(''); setTitle(''); setOverview(''); setPoster(''); setBackdrop(''); setVideoUrl(''); setMixdropUrl(''); setAlternativeUrl3(''); setSelectedSection('exclusive'); setMediaType('movie'); };
+
 
   const startEdit = (movie) => {
     setEditingId(movie.id);
@@ -154,7 +157,8 @@ const Admin = () => {
     setPoster(movie.poster_path);
     setBackdrop(movie.backdrop_path);
     setVideoUrl(movie.video_url || '');
-    setVideoUrlSpanish(movie.video_url_spanish || '');
+    setMixdropUrl(movie.mixdrop_url || '');
+    setAlternativeUrl3(movie.alternative_url_3 || '');
     setSelectedSection(movie.sectionId || 'exclusive');
     setMediaType(movie.media_type || 'movie');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -255,7 +259,8 @@ const Admin = () => {
                 <div className="input-group"><label><FaFilm /> Título</label><input value={title} onChange={(e) => setTitle(e.target.value)} required /></div>
                 <div className="form-row">
                   <div className="input-group"><label><FaLink /> URL Video (Videasy por Defecto)</label><input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="Opcional. Si lo dejas vacío, usa Videasy." /></div>
-                  <div className="input-group"><label><FaLanguage /> URL Fastream / HomeCine (Latino HD)</label><input value={videoUrlSpanish} onChange={(e) => setVideoUrlSpanish(e.target.value)} placeholder="Ej: https://fastream.to/embed-xxxxx.html" /></div>
+                  <div className="input-group"><label><FaLink /> URL Mixdrop (Alternativo 2)</label><input value={mixdropUrl} onChange={(e) => setMixdropUrl(e.target.value)} placeholder="Ej: https://m1xdrop.click/e/xxxx" /></div>
+                  <div className="input-group"><label><FaLink /> URL Servidor (Alternativo 3)</label><input value={alternativeUrl3} onChange={(e) => setAlternativeUrl3(e.target.value)} placeholder="Ej: Cualquier otro enlace de video" /></div>
                 </div>
                 <div className="input-group">
                   <label><FaTags /> Sección en Home</label>

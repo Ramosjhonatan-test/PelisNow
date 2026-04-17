@@ -120,6 +120,35 @@ function AppContent() {
     return () => clearInterval(interval);
   }, []);
 
+  // GUEST TIME LIMIT LOGIC (10 Minutes)
+  const [isGuestExpired, setIsGuestExpired] = useState(false);
+  useEffect(() => {
+    if (user?.email) {
+      setIsGuestExpired(false);
+      localStorage.removeItem('zenplus_guest_start');
+      return;
+    }
+
+    let startTime = localStorage.getItem('zenplus_guest_start');
+    if (!startTime) {
+      startTime = Date.now().toString();
+      localStorage.setItem('zenplus_guest_start', startTime);
+    }
+
+    const checkGuestTime = () => {
+      const elapsed = Date.now() - parseInt(startTime, 10);
+      //limite de tiempo de prueba
+      const limitMs = 1 * 60 * 1000; // 10 minutes
+      if (elapsed > limitMs) {
+        setIsGuestExpired(true);
+      }
+    };
+
+    checkGuestTime();
+    const guestInterval = setInterval(checkGuestTime, 10000); // Check every 10 secs
+    return () => clearInterval(guestInterval);
+  }, [user]);
+
   // INDIVIDUAL USER BLOCK
   if (userDoc?.status === 'blocked') {
     return (
@@ -252,6 +281,67 @@ function AppContent() {
     );
   }
 
+  // GUEST TRIAL EXPIRED BLOCK
+  if (isGuestExpired && location.pathname !== '/login') {
+    return (
+      <div style={{
+        height: '100vh',
+        backgroundColor: '#0f1014',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '20px',
+        fontFamily: 'sans-serif'
+      }}>
+        <div className="animate-fade-in" style={{
+          background: 'rgba(20, 21, 27, 0.95)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '16px',
+          padding: '30px 25px',
+          maxWidth: '340px',
+          width: '100%',
+          textAlign: 'center',
+          backdropFilter: 'blur(20px)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+        }}>
+          <div style={{ fontSize: '32px', marginBottom: '12px' }}>🍿</div>
+          
+          <h2 style={{ color: 'white', fontSize: '18px', marginBottom: '8px', fontWeight: '600' }}>
+            ¿Te está gustando?
+          </h2>
+          
+          <p style={{ fontSize: '14px', color: '#a0a0a0', marginBottom: '24px', lineHeight: '1.5' }}>
+            Para disfrutar más contenido, regístrate gratis y accede a todo el catálogo de <strong style={{ color: '#fff' }}>ZenPlus</strong>.
+          </p>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              onClick={() => navigate('/login')}
+              style={{
+                flex: 1, padding: '12px', background: 'transparent', 
+                color: 'white', border: '1px solid rgba(255,255,255,0.25)',
+                borderRadius: '8px', fontSize: '14px', cursor: 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              Iniciar Sesión
+            </button>
+            <button 
+              onClick={() => navigate('/login?mode=register')}
+              style={{
+                flex: 1, padding: '12px', background: '#e50914', 
+                color: 'white', border: 'none',
+                borderRadius: '8px', fontSize: '14px', cursor: 'pointer',
+                fontWeight: '600', boxShadow: '0 4px 12px rgba(229, 9, 20, 0.4)'
+              }}
+            >
+              Registrarse
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">

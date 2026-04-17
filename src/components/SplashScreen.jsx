@@ -2,17 +2,24 @@ import { useState, useEffect } from 'react';
 import Logo from './Logo';
 import './SplashScreen.css';
 
+let splashHasShown = false;
+
 const SplashScreen = () => {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(() => !splashHasShown);
 
   useEffect(() => {
+    if (!visible) return;
+
+    // Mark as shown for the module lifecycle
+    splashHasShown = true;
+
     // Unmount completely after animation ends (2s)
     const timer = setTimeout(() => {
       setVisible(false);
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [visible]);
 
   if (!visible) return null;
 

@@ -95,8 +95,8 @@ const Home = () => {
     };
     getData();
   }, [user]);
-
-  const featuredMovie = netflixOriginals.length > 0 ? netflixOriginals[Math.floor(Math.random() * netflixOriginals.length)] : null;
+  // The carousel will pick the first 5 automatically
+  const heroMovies = netflixOriginals.length > 0 ? netflixOriginals : trending;
 
   // Map Section ID to its data
   const getSectionData = (id) => {
@@ -131,7 +131,7 @@ const Home = () => {
 
   return (
     <div className='home animate-fade-in'>
-      <Hero movie={featuredMovie} />
+      <Hero movies={heroMovies} />
       <div style={{ padding: '0 0 50px 0', marginTop: '-150px', position: 'relative', zIndex: 10 }}>
         {sections
           .filter(section => section.visible)
@@ -145,7 +145,11 @@ const Home = () => {
             return (
               <div key={section.id}>
                 {section.id === 'netflixOriginals' && <ExploreStrip />}
-                <MovieRow title={section.label} movies={rowData} />
+                <MovieRow 
+                  title={section.label} 
+                  movies={rowData} 
+                  isTop10={section.id === 'trending'} 
+                />
               </div>
             );
           })

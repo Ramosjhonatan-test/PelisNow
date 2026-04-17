@@ -6,6 +6,7 @@ import { db } from '../firebase';
 import { doc, setDoc, arrayUnion } from 'firebase/firestore';
 import { UserAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
+import ScoreCircle from './ScoreCircle';
 import './MovieCard.css';
 
 const MovieCard = ({ movie }) => {
@@ -44,8 +45,13 @@ const MovieCard = ({ movie }) => {
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
     >
-      <Link to={linkPath}>
+      <Link to={linkPath} className="card-link-wrapper">
         <div className="card-badge">{contentType}</div>
+        {movie.vote_average > 0 && (
+          <div className="card-floating-score">
+            <ScoreCircle vote={movie.vote_average} />
+          </div>
+        )}
         <img 
           src={posterUrl} 
           alt={movie.title || movie.name} 

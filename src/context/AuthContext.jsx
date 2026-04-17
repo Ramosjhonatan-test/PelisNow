@@ -8,17 +8,22 @@ const AuthContext = createContext();
 export function AuthContextProvider({ children }) {
   const [user, setUser] = useState({});
 
-  async function signUp(email, password, avatarUrl) {
+  async function signUp(email, password, avatarUrl, fullName, phone) {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // Set avatar on Firebase Auth profile
-      if (avatarUrl) {
-        await updateProfile(userCredential.user, { photoURL: avatarUrl });
+      // Set avatar and name on Firebase Auth profile
+      if (avatarUrl || fullName) {
+        await updateProfile(userCredential.user, { 
+          photoURL: avatarUrl || '',
+          displayName: fullName || ''
+        });
       }
-      // Create a user document to store their favorites
+      // Create a user document to store their data
       await setDoc(doc(db, 'users', userCredential.user.email), {
         savedMovies: [],
         photoURL: avatarUrl || '',
+        displayName: fullName || '',
+        phone: phone || '',
         createdAt: new Date().toISOString(),
         status: 'active'
       });

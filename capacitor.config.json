@@ -4,7 +4,7 @@
   "webDir": "dist",
   "server": {
     "androidScheme": "https",
-    "allowNavigation": ["player.videasy.net"]
+    "allowNavigation": ["player.videasy.net", "embed69.org", "*.embed69.org", "m1xdrop.click", "*.m1xdrop.click", "unlimplay.com", "*.unlimplay.com"]
   },
   "android": {
     "allowMixedContent": true,

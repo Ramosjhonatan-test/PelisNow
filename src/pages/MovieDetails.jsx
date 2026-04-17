@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
-import { FaPlay, FaPlus, FaArrowLeft, FaTimes, FaFilm, FaInfoCircle, FaLanguage } from 'react-icons/fa';
+import { FaPlay, FaPlus, FaArrowLeft, FaTimes, FaFilm, FaInfoCircle, FaLanguage, FaRegClock, FaStar, FaUsers, FaTags } from 'react-icons/fa';
 import { getImageUrl, fetchSeasonEpisodes, fetchCollection, requests } from '../api/tmdb';
 import { UserAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { db } from '../firebase';
 import { arrayUnion, doc, setDoc, getDoc } from 'firebase/firestore';
 import MovieCard from '../components/MovieCard';
+import ScoreCircle from '../components/ScoreCircle';
 import { SkeletonHero, SkeletonRow } from '../components/SkeletonLoader';
 import './MovieDetails.css';
 
@@ -18,7 +19,8 @@ const MovieDetails = () => {
   const [movie, setMovie] = useState(null);
   const [similar, setSimilar] = useState([]);
   const [playVideo, setPlayVideo] = useState(null); // 'stream' or 'trailer'
-  const [fastreamInput, setFastreamInput] = useState('');
+  const [mixdropInput, setMixdropInput] = useState('');
+  const [alternative3Input, setAlternative3Input] = useState('');
   const [isSavingUrl, setIsSavingUrl] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
@@ -47,7 +49,7 @@ const MovieDetails = () => {
 
         // 2. Fetch TMDB Data (PRECISE)
         const category = isTvRoute ? 'tv' : 'movie';
-        const tmdbUrl = `https://api.themoviedb.org/3/${category}/${id}?api_key=c9ae557803081c8546b65026fec5a5bc&language=es-MX&append_to_response=videos,similar,recommendations`;
+        const tmdbUrl = `https://api.themoviedb.org/3/${category}/${id}?api_key=c9ae557803081c8546b65026fec5a5bc&language=es-MX&append_to_response=videos,similar,recommendations,external_ids,credits`;
         
         const response = await fetch(tmdbUrl);
         const tmdbData = await response.json();
@@ -144,25 +146,31 @@ const MovieDetails = () => {
   };
 
   const handleQuickSave = async () => {
-    if (!fastreamInput.trim() || !user || user.email !== 'danielacopana@gmail.com') return;
+    if (!user || user.email !== 'danielacopana@gmail.com') return;
     setIsSavingUrl(true);
     try {
-      const docRef = doc(db, 'exclusive_movies', String(movie.id || movie.tmdb_id));
-      await setDoc(docRef, {
+      await setDoc(doc(db, 'exclusive_movies', String(movie.id || movie.tmdb_id)), {
         id: movie.id,
         tmdb_id: movie.id,
         title: movie.title || movie.name || '',
         poster_path: movie.poster_path || '',
         backdrop_path: movie.backdrop_path || '',
         overview: movie.overview || '',
-        video_url_spanish: fastreamInput.trim(),
+        mixdrop_url: mixdropInput.trim() || movie.mixdrop_url || '',
+        alternative_url_3: alternative3Input.trim() || movie.alternative_url_3 || '',
         sectionId: movie.sectionId || 'exclusive',
         isExclusive: true
       }, { merge: true });
       
-      setMovie(prev => ({ ...prev, video_url_spanish: fastreamInput.trim(), isExclusive: true }));
-      setFastreamInput('');
-      addNotification('Modo Premium Activo', '¡Enlace guardado! La película ahora está disponible en HD.', 'success');
+      setMovie(prev => ({ 
+        ...prev, 
+        mixdrop_url: mixdropInput.trim() || prev.mixdrop_url,
+        alternative_url_3: alternative3Input.trim() || prev.alternative_url_3,
+        isExclusive: true 
+      }));
+      setMixdropInput('');
+      setAlternative3Input('');
+      addNotification('Servidores Actualizados', '¡Los enlaces se han vinculado correctamente!', 'success');
     } catch (error) {
       console.error("Error guardando enlace rápido:", error);
       addNotification('Error en Admin', 'No se pudo guardar el enlace premium', 'error');
@@ -170,14 +178,36 @@ const MovieDetails = () => {
     setIsSavingUrl(false);
   };
 
-  const premiumStreamUrl = movie ? (movie.video_url_spanish || movie.video_url || '') : '';
-  
+  const formatRuntime = (minutes) => {
+    if (!minutes) return null;
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+  };
+
   const getPublicStreamUrl = () => {
     if (!movie) return '';
     const movieId = movie.tmdb_id || movie.id;
     return isTvRoute 
       ? `https://player.videasy.net/tv/${movieId}/${selectedSeason}/${selectedEpisode}?color=4a7af7`
       : `https://player.videasy.net/movie/${movieId}?color=4a7af7`;
+  };
+
+  const getEmbed69Url = () => {
+    if (!movie) return '';
+    const imdbId = movie.external_ids?.imdb_id || movie.imdb_id;
+    if (!imdbId) return null;
+    return isTvRoute
+      ? `https://embed69.org/f/${imdbId}/${selectedSeason}/${selectedEpisode}`
+      : `https://embed69.org/f/${imdbId}`;
+  };
+
+  const getUnlimplayUrl = () => {
+    if (!movie) return '';
+    const tmdbId = movie.tmdb_id || movie.id;
+    return isTvRoute
+      ? `https://unlimplay.com/play.php/embed/tv/${tmdbId}/${selectedSeason}/${selectedEpisode}`
+      : `https://unlimplay.com/play.php/embed/movie/${tmdbId}`;
   };
 
   if (!movie) {
@@ -215,16 +245,26 @@ const MovieDetails = () => {
               <div className="info-header">
                 <h1 className="movie-title-large">{movie.title || movie.name}</h1>
                 <div className="movie-meta-row">
+                  {movie.release_date?.startsWith('2026') || movie.first_air_date?.startsWith('2026') ? (
+                    <span className="badge-new-striking">ESTRENO</span>
+                  ) : null}
                   <span className="year-tag">{movie.release_date?.split('-')[0] || movie.first_air_date?.split('-')[0]}</span>
                   <span className="type-tag">{isTvRoute ? 'Serie' : 'Película'}</span>
-                  {movie.vote_average > 0 && <span className="rating-tag">⭐ {movie.vote_average.toFixed(1)}</span>}
+                  {movie.vote_average > 0 && <ScoreCircle vote={movie.vote_average} />}
+                  {(movie.runtime || movie.episode_run_time?.[0]) && (
+                    <span className="runtime-tag">
+                      <FaRegClock /> {formatRuntime(movie.runtime || movie.episode_run_time[0])}
+                    </span>
+                  )}
                 </div>
+                
+                {movie.genres && (
+                  <div className="genres-container">
+                    {movie.genres.map(g => <span key={g.id} className="genre-pill">{g.name}</span>)}
+                  </div>
+                )}
               </div>
 
-              <p className="movie-description-large">
-                {movie.overview || 'Esta increíble producción no cuenta con una descripción detallada todavía, pero promete ser una experiencia inolvidable.'}
-              </p>
-              
               {isTvRoute && movie.seasons && (
                 <div className="series-selector-container">
                   <div className="series-selector-header">
@@ -273,19 +313,31 @@ const MovieDetails = () => {
               )}
 
               <div className="main-action-group">
-                {(premiumStreamUrl && movie.title) ? (
-                  <button className="btn-premium-play" onClick={() => handlePlayClick('stream_premium')}>
-                    <FaPlay /> Ver (Latino HD)
-                  </button>
-                ) : (
-                  <button className="btn-premium-play fallback-btn" style={{ opacity: 0.5, cursor: 'not-allowed' }} title={isTvRoute ? "Usa el servidor público para series" : "El administrador aún no ha subido el video para esta película"}>
-                    <FaPlay /> {isTvRoute ? 'Sólo Público' : 'Premium Bloqueado'}
+                <button className="btn-server-play" onClick={() => handlePlayClick('stream_unlimplay')}>
+                  <FaPlay /> Reproductor 1
+                </button>
+
+                {getEmbed69Url() && (
+                  <button className="btn-server-play" onClick={() => handlePlayClick('stream_alternative')}>
+                    <FaPlay /> Reproductor 2
                   </button>
                 )}
 
-                <button className="btn-glass-secondary" onClick={() => handlePlayClick('stream_public')}>
-                  <FaPlay /> Ver Público (Videasy)
+                <button className="btn-server-play" onClick={() => handlePlayClick('stream_public')}>
+                  <FaPlay /> Reproductor 3
                 </button>
+
+                {movie.mixdrop_url && (
+                  <button className="btn-glass-secondary" onClick={() => handlePlayClick('stream_mixdrop')}>
+                    <FaPlay /> Ver (Mixdrop)
+                  </button>
+                )}
+
+                {movie.alternative_url_3 && (
+                  <button className="btn-glass-secondary" onClick={() => handlePlayClick('stream_alternative_3')}>
+                    <FaPlay /> Ver (Alternativa 4)
+                  </button>
+                )}
 
                 {trailerUrl && (
                   <button className="btn-glass-secondary" onClick={() => handlePlayClick('trailer')}>
@@ -293,22 +345,38 @@ const MovieDetails = () => {
                   </button>
                 )}
                 <button className="btn-glass-icon" onClick={saveMovie} title="Añadir a mi lista">
-                  <FaPlus />
+                  <FaPlus /> <span>Añadir a mi lista</span>
                 </button>
               </div>
 
               {user?.email === 'danielacopana@gmail.com' && movie.title && (
                 <div className="admin-quick-edit">
-                  <p className="admin-badge"><FaInfoCircle /> Panel Admin Rápido (1-Clic)</p>
-                  <div className="quick-edit-row">
-                    <input 
-                      type="text" 
-                      placeholder="Pega aquí el enlace de Fastream (https://fastream.to/...)" 
-                      value={fastreamInput} 
-                      onChange={(e) => setFastreamInput(e.target.value)} 
-                    />
-                    <button onClick={handleQuickSave} disabled={isSavingUrl || !fastreamInput.trim()}>
-                      {isSavingUrl ? 'Guardando...' : 'Hacer Premium'}
+                  <p className="admin-badge"><FaInfoCircle /> Panel de Gestión de Servidores (Admin)</p>
+                  <div className="quick-edit-grid">
+                    <div className="quick-input-row">
+                      <label>Servidor Mixdrop:</label>
+                      <input 
+                        type="text" 
+                        placeholder="Enlace Mixdrop..." 
+                        value={mixdropInput} 
+                        onChange={(e) => setMixdropInput(e.target.value)} 
+                      />
+                    </div>
+                    <div className="quick-input-row">
+                      <label>Alternativa 3:</label>
+                      <input 
+                        type="text" 
+                        placeholder="Cualquier otro enlace..." 
+                        value={alternative3Input} 
+                        onChange={(e) => setAlternative3Input(e.target.value)} 
+                      />
+                    </div>
+                    <button 
+                      className="btn-admin-save" 
+                      onClick={handleQuickSave} 
+                      disabled={isSavingUrl || (!mixdropInput.trim() && !alternative3Input.trim())}
+                    >
+                      {isSavingUrl ? 'Guardando...' : 'Actualizar Todos los Servidores'}
                     </button>
                   </div>
                 </div>
@@ -316,6 +384,33 @@ const MovieDetails = () => {
 
             </div>
           </div>
+
+          <div className="description-section">
+            <h2 className="section-title">Sinopsis</h2>
+            <p className="movie-description-large">
+              {movie.overview || 'Esta increíble producción no cuenta con una descripción detallada todavía, pero promete ser una experiencia inolvidable.'}
+            </p>
+          </div>
+
+          {movie.credits?.cast?.length > 0 && (
+            <div className="cast-section">
+              <h2 className="section-title"><FaUsers /> Reparto Principal</h2>
+              <div className="cast-scroll">
+                {movie.credits.cast.slice(0, 10).map(person => (
+                  <div key={person.id} className="cast-card">
+                    <img 
+                      src={person.profile_path ? getImageUrl(person.profile_path) : 'https://via.placeholder.com/150x225?text=No+Photo'} 
+                      alt={person.name} 
+                    />
+                    <div className="cast-info">
+                      <p className="cast-name">{person.name}</p>
+                      <p className="cast-character">{person.character}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {playVideo && (
@@ -324,11 +419,23 @@ const MovieDetails = () => {
               <div className="player-top-bar">
                 <div className="player-controls-left">
                   <div className="server-tabs">
-                    {playVideo === 'stream_premium' && (
-                      <button className="server-tab active">⭐ Fastream (Latino HD)</button>
-                    )}
                     {playVideo === 'stream_public' && (
-                      <button className="server-tab active">🌐 Videasy (Servidor Público)</button>
+                      //VIDEASY
+                      <button className="server-tab active">Rreproductor</button>
+                    )}
+                    {playVideo === 'stream_alternative' && (
+                      //EMBED
+                      <button className="server-tab active">Rreproductor</button>
+                    )}
+                    {playVideo === 'stream_unlimplay' && (
+                      //UNLIPLAY
+                      <button className="server-tab active">Rreproductor</button>
+                    )}
+                    {playVideo === 'stream_mixdrop' && (
+                      <button className="server-tab active">💧 Mixdrop (Manual)</button>
+                    )}
+                    {playVideo === 'stream_alternative_3' && (
+                      <button className="server-tab active">🛡️ Alternativa (Manual)</button>
                     )}
                     {playVideo === 'trailer' && (
                       <button className="server-tab active">🎬 Trailer</button>
@@ -336,7 +443,7 @@ const MovieDetails = () => {
                   </div>
                   {playVideo === 'stream_public' && (
                     <div className="language-tip">
-                      <FaInfoCircle /> <span>Audio: Elige Gekko en el boton ☁️ superior derecho</span>
+                      <FaInfoCircle /> <span>Audio: Para el audio en Español elige GEKKO en el boton ☁️ superior derecho</span>
                     </div>
                   )}
                 </div>
@@ -346,13 +453,19 @@ const MovieDetails = () => {
               <div className="iframe-wrapper">
                 <iframe 
                   src={
-                    playVideo === 'stream_premium' ? premiumStreamUrl : 
                     playVideo === 'stream_public' ? publicStreamUrl : 
+                    playVideo === 'stream_alternative' ? getEmbed69Url() : 
+                    playVideo === 'stream_unlimplay' ? getUnlimplayUrl() :
+                    playVideo === 'stream_mixdrop' ? movie.mixdrop_url :
+                    playVideo === 'stream_alternative_3' ? movie.alternative_url_3 :
                     trailerUrl
                   } 
                   title="Reproduction"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                   allowFullScreen
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
                 ></iframe>
               </div>
             </div>
@@ -362,9 +475,11 @@ const MovieDetails = () => {
 
       {similar.length > 0 && (
         <div className="similar-movies">
-          <h2>Títulos Similares</h2>
-          <div className="similar-grid">
-            {similar.map(item => <MovieCard key={item.id} movie={item} />)}
+          <h2 className="section-title"><FaFilm /> Títulos Similares</h2>
+          <div className="similar-scroll-container">
+            <div className="similar-grid">
+              {similar.map(item => <MovieCard key={item.id} movie={item} />)}
+            </div>
           </div>
         </div>
       )}

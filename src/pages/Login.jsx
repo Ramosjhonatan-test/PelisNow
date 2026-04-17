@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth } from '../firebase';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import Logo from '../components/Logo';
 import './Login.css';
 
@@ -22,6 +23,9 @@ const AVATARS = [
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [rememberMe, setRememberMe] = useState(false);
@@ -30,6 +34,14 @@ const Login = () => {
   const { logIn, signUp, resetPassword } = UserAuth();
   const { addNotification } = useNotifications();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Auto-switch to register mode if ?mode=register
+  useEffect(() => {
+    if (searchParams.get('mode') === 'register') {
+      setIsLogin(false);
+    }
+  }, [searchParams]);
 
   // Load remembered email on mount
   useEffect(() => {
@@ -69,7 +81,7 @@ const Login = () => {
         await logIn(email, password);
         addNotification('Bienvenido', 'Has iniciado sesión correctamente en ZenPlus', 'success');
       } else {
-        await signUp(email, password, selectedAvatar);
+        await signUp(email, password, selectedAvatar, fullName, phone);
         addNotification('Cuenta creada', 'Bienvenido a la legión, disfruta del contenido', 'success');
       }
       navigate('/');
@@ -114,6 +126,33 @@ const Login = () => {
         {error && <div className="auth-error"><span>⚠️</span> {error}</div>}
         
         <form onSubmit={handleSubmit} className="auth-form">
+          {!isLogin && (
+            <>
+              <div className="floating-input">
+                <input 
+                  type="text" 
+                  id="auth-name"
+                  placeholder=" "
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)} 
+                  required
+                />
+                <label htmlFor="auth-name">Nombre completo</label>
+              </div>
+              <div className="floating-input">
+                <input 
+                  type="tel" 
+                  id="auth-phone"
+                  placeholder=" "
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)} 
+                  required
+                />
+                <label htmlFor="auth-phone">Celular</label>
+              </div>
+            </>
+          )}
+
           <div className="floating-input">
             <input 
               type="email" 
@@ -127,9 +166,9 @@ const Login = () => {
             <label htmlFor="auth-email">Correo electrónico</label>
           </div>
           
-          <div className="floating-input">
+          <div className="floating-input password-input-container">
             <input 
-              type="password" 
+              type={showPassword ? "text" : "password"} 
               id="auth-pass"
               placeholder=" "
               autoComplete={isLogin ? "current-password" : "new-password"}
@@ -138,6 +177,9 @@ const Login = () => {
               required
             />
             <label htmlFor="auth-pass">Contraseña</label>
+            <div className="password-toggle" onClick={() => setShowPassword(!showPassword)}>
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
+            </div>
           </div>
 
           {!isLogin && (
