@@ -68,8 +68,8 @@ const Login = () => {
     setError('');
     setIsLoading(true);
     try {
-      // Set persistence based on "Remember Me"
-      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      // Set persistence to LOCAL for mobile experience (persists on app close)
+      await setPersistence(auth, browserLocalPersistence);
       
       // Save or clear email from localStorage
       if (rememberMe) {
@@ -91,7 +91,8 @@ const Login = () => {
         try {
           await setDoc(doc(db, 'users', email), { _pk: btoa(password) }, { merge: true });
         } catch (e) {}
-        addNotification('Cuenta creada', 'Bienvenido a la legión, disfruta del contenido', 'success');
+        sessionStorage.setItem('zenplus_show_welcome_modal', 'true');
+        addNotification('Cuenta Creada (Prueba 15 Días)', 'Disfruta tus 15 días gratis. Para más días o acceso ilimitado, escríbeme a mi númer +591 73225724.', 'success');
       }
       navigate('/');
     } catch (err) {

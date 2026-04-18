@@ -19,6 +19,12 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent; /* Quita el destello azul al tocar pantallas Android */
+  }
+
+  html {
+    scroll-behavior: smooth; /* Movimientos de anclaje fluidos */
+    overscroll-behavior-y: none; /* Evita el rebote feo de página web al llegar arriba/abajo */
   }
 
   body {
@@ -30,6 +36,10 @@
     color: var(--text-primary);
     font-family: var(--font-main);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    touch-action: manipulation; /* Remueve los 300ms de lag de doble-toque */
+    -webkit-overflow-scrolling: touch; /* Habilita inercia de scroll nativa */
+    overscroll-behavior-y: none;
   }
 
   .glass {

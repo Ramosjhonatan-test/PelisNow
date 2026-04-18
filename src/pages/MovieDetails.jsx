@@ -6,6 +6,7 @@ import { UserAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { db } from '../firebase';
 import { arrayUnion, doc, setDoc, getDoc } from 'firebase/firestore';
+import { Capacitor } from '@capacitor/core';
 import MovieCard from '../components/MovieCard';
 import ScoreCircle from '../components/ScoreCircle';
 import { SkeletonHero, SkeletonRow } from '../components/SkeletonLoader';
@@ -104,6 +105,38 @@ const MovieDetails = () => {
     };
     loadEpisodes();
   }, [movie, selectedSeason]);
+
+  // Global Back Button Interceptor for Video Modal
+  useEffect(() => {
+    window.isAppModalOpen = !!playVideo;
+    const handleClose = () => setPlayVideo(null);
+    window.addEventListener('closeAppModal', handleClose);
+
+    // Web Fallback: Push dummy state so browser back button closes the modal
+    if (playVideo && !Capacitor.isNativePlatform()) {
+      window.history.pushState({ isVideoModal: true }, '');
+
+      const handlePopState = () => {
+        setPlayVideo(null);
+      };
+      window.addEventListener('popstate', handlePopState);
+
+      return () => {
+        window.isAppModalOpen = false;
+        window.removeEventListener('closeAppModal', handleClose);
+        window.removeEventListener('popstate', handlePopState);
+        // If the user closed it with 'X' button instead of the browser Back button, clean up the dummy state
+        if (window.history.state?.isVideoModal) {
+          window.history.back();
+        }
+      };
+    }
+
+    return () => {
+      window.isAppModalOpen = false;
+      window.removeEventListener('closeAppModal', handleClose);
+    };
+  }, [playVideo]);
 
   const saveMovie = async () => {
     if (user?.email && movie) {
@@ -226,7 +259,7 @@ const MovieDetails = () => {
   return (
     <div className="details-page animate-fade-in">
       <div className="details-hero" style={{ 
-        backgroundImage: `linear-gradient(to top, var(--bg-primary) 5%, rgba(15, 16, 20, 0.4) 100%), url(${movie.isExclusive && movie.backdrop_path ? movie.backdrop_path : getImageUrl(movie.backdrop_path || movie.poster_path)})` 
+        backgroundImage: `linear-gradient(to top, var(--bg-primary) 5%, rgba(15, 16, 20, 0.4) 100%), url(${movie.isExclusive && movie.backdrop_path ? movie.backdrop_path : getImageUrl(movie.backdrop_path || movie.poster_path, 'original')})` 
       }}>
         <div className="hero-overlay"></div>
         <div className="hero-content">
@@ -399,7 +432,7 @@ const MovieDetails = () => {
                 {movie.credits.cast.slice(0, 10).map(person => (
                   <div key={person.id} className="cast-card">
                     <img 
-                      src={person.profile_path ? getImageUrl(person.profile_path) : 'https://via.placeholder.com/150x225?text=No+Photo'} 
+                      src={person.profile_path ? getImageUrl(person.profile_path, 'w185') : 'https://via.placeholder.com/150x225?text=No+Photo'} 
                       alt={person.name} 
                     />
                     <div className="cast-info">

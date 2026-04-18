@@ -45,7 +45,7 @@ const Hero = ({ movies = [] }) => {
   const movie = activeMovies[currentIndex];
   const isTv = movie.media_type === 'tv' || (!movie.title && movie.name);
   const linkPath = isTv ? `/tv/${movie.id}` : `/movie/${movie.id}`;
-  const backdropUrl = getImageUrl(movie.backdrop_path || movie.poster_path);
+  const backdropUrl = getImageUrl(movie.backdrop_path || movie.poster_path, 'original');
 
   // Manual Jump
   const goToSlide = (idx) => {

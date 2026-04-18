@@ -35,7 +35,7 @@ const Navbar = () => {
   const mobileInputRef = useRef(null);
   const dropdownRef = useRef(null);
 
-  const isAdmin = user?.email === 'danielacopana@gmail.com';
+  const isAdmin = user?.email === 'danielacopana@gmail.com' || userDoc?.isAdmin === true;
 
   // Load history on mount
   useEffect(() => {
@@ -242,7 +242,7 @@ const Navbar = () => {
                         }}
                       >
                         <img 
-                          src={result.poster_path ? getImageUrl(result.poster_path) : 'https://via.placeholder.com/40x60?text=N/A'} 
+                          src={result.poster_path ? getImageUrl(result.poster_path, 'w92') : 'https://via.placeholder.com/40x60?text=N/A'} 
                           alt={result.title || result.name} 
                         />
                         <div className="item-info">
@@ -288,7 +288,7 @@ const Navbar = () => {
 
         {user ? (
           <div className="user-profile-menu" ref={dropdownRef}>
-            <div className={`avatar-btn ${userDoc?.accountExpiry ? 'premium-border' : ''}`} onClick={() => setShowDropdown(!showDropdown)}>
+            <div className={`avatar-btn ${!userDoc?.accountExpiry ? 'premium-border' : ''}`} onClick={() => setShowDropdown(!showDropdown)}>
               {userDoc?.photoURL ? (
                 <img src={userDoc.photoURL} alt="User Avatar" />
               ) : (
@@ -309,17 +309,17 @@ const Navbar = () => {
                       </div>
                    </div>
                    
-                   <div className="account-status-badge">
-                      {userDoc?.accountExpiry ? (
-                        <div className="plan-pill vip">
-                           <FaCrown /> <span>Plan VIP</span>
-                        </div>
-                      ) : (
-                        <div className="plan-pill standard">
-                           <FaUser /> <span>Plan Estándar</span>
-                        </div>
-                      )}
-                   </div>
+                    <div className="account-status-badge">
+                       {!userDoc?.accountExpiry ? (
+                         <div className="plan-pill vip">
+                            <FaCrown /> <span>Plan VIP</span>
+                         </div>
+                       ) : (
+                         <div className="plan-pill standard">
+                            <FaUser /> <span>Plan Estándar</span>
+                         </div>
+                       )}
+                    </div>
                 </div>
 
                 {userDoc?.accountExpiry && (

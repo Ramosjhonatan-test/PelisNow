@@ -733,30 +733,92 @@ const Admin = () => {
               <h2>Estructura de la Portada</h2>
               <button className="save-config-btn" onClick={async () => { await setDoc(doc(db, 'settings', 'homepage_sections'), { sections }); addNotification('Éxito', 'Configuración de portada guardada', 'success'); }}><FaSave /> Guardar Todo</button>
             </div>
-            <div className="create-section-box">
-              <h4><FaPlus /> Nueva Sección</h4>
+            <div className="create-section-box premium-box">
+              <h4><FaPlus /> Añadir Nueva Sección</h4>
+              <p className="admin-note" style={{marginBottom: '15px'}}>Selecciona una categoría oficial del sistema TMDB o crea una "Personalizada" para tus películas subidas a mano.</p>
               <div className="create-inputs">
-                <input placeholder="Nombre (ej: Acción)" value={newSectionLabel} onChange={(e) => setNewSectionLabel(e.target.value)} />
-                <input placeholder="ID (ej: accion)" value={newSectionId} onChange={(e) => {
-                  const val = e.target.value.toLowerCase().replace(/\s+/g, '_');
-                  setNewSectionId(val);
-                }} />
-                <button onClick={() => {
+                <select 
+                  className="admin-select"
+                  value={newSectionId === '' ? '' : (['marvel', 'dc', 'anime', 'animeMovies', 'kids', 'scifi', 'asianDramas', 'top2025', 'top2024', 'horror', 'romance', 'documentaries', 'topRated', 'upcoming', 'trending', 'netflixOriginals'].includes(newSectionId) ? newSectionId : 'custom')}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'custom') {
+                      setNewSectionId('nueva_seccion');
+                      setNewSectionLabel('Nueva Sección Manual');
+                    } else if (val) {
+                      setNewSectionId(val);
+                      setNewSectionLabel(e.target.options[e.target.selectedIndex].text);
+                    } else {
+                      setNewSectionId('');
+                      setNewSectionLabel('');
+                    }
+                  }}
+                >
+                  <option value="">-- Elige una Categoría del Sistema --</option>
+                  <optgroup label="Oficiales de Catálogo TMDB">
+                    <option value="marvel">Universo Marvel</option>
+                    <option value="dc">Universo DC</option>
+                    <option value="anime">Series de Anime</option>
+                    <option value="animeMovies">Películas de Anime</option>
+                    <option value="kids">Animación y Niños</option>
+                    <option value="scifi">Ciencia Ficción</option>
+                    <option value="asianDramas">Doramas y Asia</option>
+                    <option value="top2025">Top Estrenos 2025</option>
+                    <option value="top2024">Mejores del 2024</option>
+                    <option value="horror">Terror</option>
+                    <option value="romance">Romance</option>
+                    <option value="documentaries">Documentales</option>
+                    <option value="topRated">Mejor Valoradas (Global)</option>
+                    <option value="upcoming">Próximos Estrenos</option>
+                    <option value="trending">Tendencias Globales</option>
+                    <option value="netflixOriginals">Destacados (Netflix)</option>
+                  </optgroup>
+                  <optgroup label="Tu Colección Propia">
+                    <option value="custom">++ Categoría Personalizada (Manual) ++</option>
+                  </optgroup>
+                </select>
+
+                {(!['marvel', 'dc', 'anime', 'animeMovies', 'kids', 'scifi', 'asianDramas', 'top2025', 'top2024', 'horror', 'romance', 'documentaries', 'topRated', 'upcoming', 'trending', 'netflixOriginals', ''].includes(newSectionId)) && (
+                  <input style={{marginTop: '10px'}} placeholder="ID de la sección (ej: mis_peliculas)" value={newSectionId} onChange={(e) => setNewSectionId(e.target.value.toLowerCase().replace(/\s+/g, '_'))} />
+                )}
+                
+                {newSectionId !== '' && (
+                  <input style={{marginTop: '10px'}} placeholder="Título Visible (ej: Acción Total)" value={newSectionLabel} onChange={(e) => setNewSectionLabel(e.target.value)} />
+                )}
+
+                <button 
+                  className="import-btn"
+                  style={{marginTop: '10px', width: '100%'}}
+                  onClick={() => {
                   if (!newSectionLabel || !newSectionId) return addNotification('Error', 'Campos vacíos', 'warning');
-                  setSections([...sections, { id: newSectionId, label: newSectionLabel, visible: true, order: sections.length + 1, type: 'custom' }]);
+                  setSections([...sections, { id: newSectionId, label: newSectionLabel, visible: true, order: sections.length + 1, type: newSectionId.includes('_') ? 'custom' : 'tmdb' }]);
                   setNewSectionLabel(''); setNewSectionId('');
-                }}>Añadir</button>
+                  addNotification('Agregado', 'No olvides presionar Guardar Todo', 'info');
+                }}>Añadir Sección</button>
               </div>
             </div>
             <div className="home-config-list">
               {sections.map((section, index) => (
-                <div key={section.id} className={`config-item ${!section.visible ? 'hidden-item' : ''}`}>
-                  <div className="item-order-controls">
-                    <FaArrowUp onClick={() => { if (index > 0) { const ns = [...sections];[ns[index], ns[index - 1]] = [ns[index - 1], ns[index]]; setSections(ns.map((s, i) => ({ ...s, order: i + 1 }))); } }} />
-                    <FaArrowDown onClick={() => { if (index < sections.length - 1) { const ns = [...sections];[ns[index], ns[index + 1]] = [ns[index + 1], ns[index]]; setSections(ns.map((s, i) => ({ ...s, order: i + 1 }))); } }} />
+                <div key={`${section.id}-${index}`} className={`config-item ${!section.visible ? 'hidden-item' : ''}`} style={{display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '15px', margin: '10px 0', borderRadius: '10px'}}>
+                  <div className="item-order-controls" style={{display: 'flex', flexDirection: 'column', gap: '5px', marginRight: '15px'}}>
+                    <FaArrowUp style={{cursor: 'pointer', color: index === 0 ? 'gray' : 'white'}} onClick={() => { if (index > 0) { const ns = [...sections];[ns[index], ns[index - 1]] = [ns[index - 1], ns[index]]; setSections(ns.map((s, i) => ({ ...s, order: i + 1 }))); } }} />
+                    <FaArrowDown style={{cursor: 'pointer', color: index === sections.length - 1 ? 'gray' : 'white'}} onClick={() => { if (index < sections.length - 1) { const ns = [...sections];[ns[index], ns[index + 1]] = [ns[index + 1], ns[index]]; setSections(ns.map((s, i) => ({ ...s, order: i + 1 }))); } }} />
                   </div>
-                  <div className="item-info"><input value={section.label} onChange={(e) => { const v = e.target.value; setSections(prev => prev.map(s => s.id === section.id ? { ...s, label: v } : s)); }} /></div>
-                  <div className="item-visibility"><button className={section.visible ? 'v' : 'h'} onClick={() => setSections(sections.map(s => s.id === section.id ? { ...s, visible: !s.visible } : s))}>{section.visible ? 'Visible' : 'Oculto'}</button></div>
+                  <div className="item-info" style={{flex: 1}}>
+                    <input className="admin-input-clean" style={{background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'white', padding: '8px', width: '90%', borderRadius: '5px', fontSize: '16px', fontWeight: 'bold'}} value={section.label} onChange={(e) => { const v = e.target.value; setSections(prev => prev.map(s => s.id === section.id ? { ...s, label: v } : s)); }} />
+                    <div style={{fontSize: '12px', color: '#888', marginTop: '5px'}}>ID Interno: <code>{section.id}</code></div>
+                  </div>
+                  <div className="item-actions" style={{display: 'flex', gap: '15px', alignItems: 'center'}}>
+                    <button style={{padding: '8px 15px', borderRadius: '20px', border: 'none', background: section.visible ? 'rgba(74, 222, 128, 0.2)' : 'rgba(255,255,255,0.1)', color: section.visible ? '#4ade80' : '#888', fontWeight: 'bold', cursor: 'pointer'}} onClick={() => setSections(sections.map(s => s.id === section.id ? { ...s, visible: !s.visible } : s))}>{section.visible ? '👁️ Visible' : '🙈 Oculto'}</button>
+                    <FaTrash 
+                      style={{color: '#ef4444', cursor: 'pointer', fontSize: '18px'}} 
+                      onClick={() => {
+                        if(window.confirm(`¿Seguro que quieres borrar la sección "${section.label}" de la portada?`)) {
+                          setSections(sections.filter(s => s.id !== section.id));
+                        }
+                      }} 
+                    />
+                  </div>
                 </div>
               ))}
             </div>

@@ -13,6 +13,7 @@ dependencies {
     implementation project(':capacitor-device')
     implementation project(':capacitor-local-notifications')
     implementation project(':capacitor-screen-orientation')
+    implementation project(':capgo-capacitor-is-root')
 
 }
 

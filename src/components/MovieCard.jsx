@@ -32,7 +32,7 @@ const MovieCard = ({ movie }) => {
     }
   };
 
-  const posterUrl = movie.isExclusive && !movie.tmdb_id ? movie.poster_path : getImageUrl(movie.poster_path);
+  const posterUrl = movie.isExclusive && !movie.tmdb_id ? movie.poster_path : getImageUrl(movie.poster_path, 'w342');
 
   // Precision type detection
   const isTv = movie.media_type === 'tv' || (!movie.title && movie.name) || movie.seasons;

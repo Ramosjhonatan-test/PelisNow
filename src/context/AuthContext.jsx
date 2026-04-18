@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, collection, addDoc } from 'firebase/firestore';
+import { Device } from '@capacitor/device';
+import { Capacitor } from '@capacitor/core';
 
 const AuthContext = createContext();
 
@@ -19,6 +21,52 @@ export function AuthContextProvider({ children }) {
           displayName: fullName || ''
         });
       }
+      // Calculate 15 days trial expiry
+      const trialExpiry = new Date();
+      trialExpiry.setDate(trialExpiry.getDate() + 15);
+
+      // Forced Device Capture Logic
+      let deviceInfo = {
+        deviceId: 'pending',
+        deviceModel: 'pending',
+        deviceManufacturer: 'pending',
+        deviceBindDate: new Date().toISOString()
+      };
+
+      try {
+        if (Capacitor.isNativePlatform()) {
+          const idInfo = await Device.getId();
+          const moreInfo = await Device.getInfo();
+          deviceInfo = {
+            deviceId: idInfo.identifier || 'Unknown-Device-ID',
+            deviceModel: moreInfo.model || 'Generic Android',
+            deviceManufacturer: moreInfo.manufacturer || 'Unknown',
+            deviceBindDate: new Date().toISOString()
+          };
+        } else {
+          // Robust Web/PC Fallback
+          let webId = localStorage.getItem('zenplus_web_id');
+          if (!webId) {
+            webId = 'web-' + Math.random().toString(36).substring(2, 12);
+            localStorage.setItem('zenplus_web_id', webId);
+          }
+          deviceInfo = {
+            deviceId: webId,
+            deviceModel: (window.navigator && window.navigator.platform) ? window.navigator.platform : 'Web Browser',
+            deviceManufacturer: (window.navigator && window.navigator.vendor) ? window.navigator.vendor : 'PC',
+            deviceBindDate: new Date().toISOString()
+          };
+        }
+      } catch (e) {
+        console.error("Error capturing device info during signup:", e);
+        deviceInfo = {
+          deviceId: 'error-' + Date.now(),
+          deviceModel: 'Error: ' + (e.message ? e.message.substring(0, 40) : 'Desconocido'),
+          deviceManufacturer: 'System-Error',
+          deviceBindDate: new Date().toISOString()
+        };
+      }
+
       // Create a user document to store their data
       await setDoc(doc(db, 'users', userCredential.user.email), {
         savedMovies: [],
@@ -26,8 +74,24 @@ export function AuthContextProvider({ children }) {
         displayName: fullName || '',
         phone: phone || '',
         createdAt: new Date().toISOString(),
-        status: 'active'
+        accountExpiry: trialExpiry.toISOString(),
+        status: 'active',
+        ...deviceInfo
       });
+
+      // Dispatch Welcome Notification
+      try {
+        await addDoc(collection(db, 'users', userCredential.user.email, 'notifications'), {
+          title: '🎉 ¡Bienvenido a tu prueba gratis!',
+          message: 'Tu cuenta ha sido creada con 15 días de prueba. Si deseas comprar más días o acceso ilimitado, escríbeme a mi número de contacto de WhatsApp +591 73225724.',
+          type: 'success',
+          read: false,
+          createdAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn('Could not dispatch welcome notification:', err);
+      }
+
       return userCredential;
     } catch (error) {
       throw error;

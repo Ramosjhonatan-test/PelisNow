@@ -13,10 +13,10 @@ const SplashScreen = () => {
     // Mark as shown for the module lifecycle
     splashHasShown = true;
 
-    // Unmount completely after animation ends (2s)
+    // Unmount completely after animation ends (2.5s)
     const timer = setTimeout(() => {
       setVisible(false);
-    }, 2000);
+    }, 2500);
 
     return () => clearTimeout(timer);
   }, [visible]);

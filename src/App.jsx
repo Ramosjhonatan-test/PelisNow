@@ -13,6 +13,8 @@ import Search from './pages/Search';
 import Admin from './pages/Admin';
 import Discover from './pages/Discover';
 import SplashScreen from './components/SplashScreen';
+import SecurityGuard from './components/SecurityGuard';
+import PremiumModal from './components/PremiumModal';
 import { UserAuth } from './context/AuthContext';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
 import NotificationToast from './components/NotificationToast';
@@ -24,11 +26,22 @@ function AppContent() {
   const { addNotification } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
-  const [appConfig, setAppConfig] = useState(null);
-  const [loadingConfig, setLoadingConfig] = useState(true);
+  const [appConfig, setAppConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem('zenplus_app_config');
+      return saved ? JSON.parse(saved) : { expiryDate: '2026-12-31T23:59:59Z' };
+    } catch (e) {
+      return { expiryDate: '2026-12-31T23:59:59Z' };
+    }
+  });
+  const [loadingConfig, setLoadingConfig] = useState(!localStorage.getItem('zenplus_app_config'));
   const [userDoc, setUserDoc] = useState(null);
   const [currentDeviceId, setCurrentDeviceId] = useState(null);
   const [deviceInfo, setDeviceInfo] = useState({ model: 'N/A', manufacturer: 'N/A' });
+  // Scrambled Constants (Anti-Grep)
+  const _V = atob('YXBwX3ZlcnNpb25z'); // app_versions
+  const _S = atob('c2V0dGluZ3M='); // settings
+  const _C = atob('YXBwX2NvbmZpZw=='); // app_config
   const [isDeviceUnauthorized, setIsDeviceUnauthorized] = useState(false);
   const [currentVersion, setCurrentVersion] = useState('...');
   const [isVersionBlocked, setIsVersionBlocked] = useState(false);
@@ -65,22 +78,19 @@ function AppContent() {
         const vName = info.version || 'web-dev';
         setCurrentVersion(vName);
 
-        const vRef = doc(db, 'app_versions', vName);
+        const vRef = doc(db, _V, vName);
 
         // --- STEP A: Listado (Read) ---
-        // Intentamos escuchar el estado. Si falla (por permisos), el loading se quita para dejar loguear.
         unsubSnapshot = onSnapshot(vRef, (snap) => {
           if (snap.exists()) {
             setIsVersionBlocked(snap.data().isBlocked === true);
           }
           setLoadingVersion(false);
         }, (err) => {
-          console.error("Version check error (guest):", err);
           setLoadingVersion(false); 
         });
 
         // --- STEP B: Registro (Write) ---
-        // Solo intentamos escribir si hay un usuario logueado
         if (user && vName !== '...') {
           await setDoc(vRef, {
             versionName: vName,
@@ -92,7 +102,6 @@ function AppContent() {
 
         safetyTimer = setTimeout(() => setLoadingVersion(false), 6000);
       } catch (e) {
-        console.error("Version sync master error:", e);
         setLoadingVersion(false);
       }
     };
@@ -103,7 +112,7 @@ function AppContent() {
       unsubSnapshot && unsubSnapshot();
       safetyTimer && clearTimeout(safetyTimer);
     };
-  }, [user]); // RE-EJECUTAR cuando el usuario cambie (loguee)
+  }, [user]);
 
   // Listener for user document (Status & Device check)
   useEffect(() => {
@@ -120,17 +129,20 @@ function AppContent() {
         // DEVICE LOCK LOGIC (Native Only)
         if (Capacitor.isNativePlatform() && currentDeviceId) {
           if (!data.deviceId) {
-            // First time: Bind current device with extra info
+            // First time: Bind current device
             try {
+              console.log("Binding device:", currentDeviceId, deviceInfo.model);
               await setDoc(doc(db, 'users', user.email), { 
                 deviceId: currentDeviceId,
-                deviceModel: deviceInfo.model,
-                deviceManufacturer: deviceInfo.manufacturer,
+                deviceModel: deviceInfo.model || 'Unknown',
+                deviceManufacturer: deviceInfo.manufacturer || 'Unknown',
                 deviceBindDate: new Date().toISOString()
               }, { merge: true });
-            } catch (e) {}
+              console.log("Device auto-bound successfully");
+            } catch (e) {
+              console.error("Auto-bind error:", e);
+            }
           } else if (data.deviceId !== currentDeviceId) {
-            // Unauthorized device
             setIsDeviceUnauthorized(true);
           } else {
             setIsDeviceUnauthorized(false);
@@ -139,7 +151,7 @@ function AppContent() {
       }
     });
     return () => unsub();
-  }, [user, currentDeviceId]);
+  }, [user, currentDeviceId, deviceInfo]);
 
   // Real-time notification listener from admin
   useEffect(() => {
@@ -173,11 +185,12 @@ function AppContent() {
   const [dbError, setDbError] = useState(null);
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'settings', 'app_config'), (snap) => {
+    const unsub = onSnapshot(doc(db, _S, _C), (snap) => {
       try {
         if (snap.exists()) {
           const data = snap.data();
           setAppConfig(data);
+          localStorage.setItem('zenplus_app_config', JSON.stringify(data));
           setDbError(null);
           
           const isTimeExpired = data.expiryDate && new Date() > new Date(data.expiryDate);
@@ -186,26 +199,20 @@ function AppContent() {
           
           const wasExpired = localStorage.getItem('zenplus_was_expired') === 'true';
           
-          // Sound when REACTIVATED (Transition from Locked to Unlocked)
           if (wasExpired && !isCurrentlyExpired) {
             addNotification('Servidor Activo', '¡El acceso a ZenPlus ha sido reactivado!', 'success');
           }
           
-          // Update last state
           localStorage.setItem('zenplus_was_expired', isCurrentlyExpired ? 'true' : 'false');
         } else {
-          setAppConfig({ expiryDate: '2026-12-31T23:59:59Z' });
-          setDbError('Documento NO encontrado');
+          setDbError('Configuración no encontrada');
         }
       } catch (err) {
-        console.error("Config Parse Error:", err);
-        setDbError('Error de parseo');
+        setDbError('Error de sincronización');
       }
       setLoadingConfig(false);
     }, (err) => {
-      console.error("Firestore Error:", err);
-      setDbError(`Error DB: ${err.code}`);
-      setAppConfig({ expiryDate: '2026-12-31T23:59:59Z' });
+      setDbError(`Error de conexión`);
       setLoadingConfig(false);
     });
     return () => unsub();
@@ -228,10 +235,17 @@ function AppContent() {
         return; 
       }
 
-      if (location.pathname === '/') {
+      // GLOBAL MODAL INTERCEPTOR
+      // If any component declared a modal is open, we close the modal instead of navigating back.
+      if (window.isAppModalOpen) {
+        window.dispatchEvent(new Event('closeAppModal'));
+        return;
+      }
+
+      if (window.location.pathname === '/') {
         CapApp.exitApp();
       } else {
-        navigate(-1);
+        window.history.back();
       }
     });
 
@@ -276,10 +290,9 @@ function AppContent() {
     return () => clearInterval(guestInterval);
   }, [user]);
 
-  // CAPA DE SEGURIDAD: Bloquear hasta que la versión esté verificada
-  if (loadingVersion) {
-    return <SplashScreen />;
-  }
+  // 4. ANDROID HARDWARE BACK BUTTON
+  // The back button is securely handled by the full-screen listener above.
+
 
   // DEVICE UNAUTHORIZED SCREEN
   if (isDeviceUnauthorized && location.pathname !== '/login') {
@@ -652,7 +665,9 @@ function AppContent() {
 
   return (
     <div className="app-container">
+      <SecurityGuard />
       <SplashScreen />
+      <PremiumModal />
       <Navbar />
       <NotificationToast />
       <main>
@@ -666,8 +681,8 @@ function AppContent() {
           <Route 
             path="/admin" 
             element={
-              <ProtectedRoute>
-                {user?.email === 'danielacopana@gmail.com' ? <Admin /> : <Navigate to="/" />}
+              <ProtectedRoute adminOnly={true}>
+                <Admin />
               </ProtectedRoute>
             } 
           />
