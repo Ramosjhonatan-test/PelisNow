@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, setDoc, onSnapshot, collection, addDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, collection, addDoc, getDoc } from 'firebase/firestore';
 import { Device } from '@capacitor/device';
 import { Capacitor } from '@capacitor/core';
 
@@ -98,8 +98,38 @@ export function AuthContextProvider({ children }) {
     }
   }
 
-  function logIn(email, password) {
-    return signInWithEmailAndPassword(auth, email, password);
+  async function logIn(email, password) {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    
+    let currentDeviceId = 'pending';
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const idInfo = await Device.getId();
+        currentDeviceId = idInfo.identifier || 'Unknown-Device-ID';
+      } else {
+        let webId = localStorage.getItem('zenplus_web_id');
+        if (!webId) {
+          webId = 'web-' + Math.random().toString(36).substring(2, 12);
+          localStorage.setItem('zenplus_web_id', webId);
+        }
+        currentDeviceId = webId;
+      }
+    } catch (e) {
+      console.error("Device verification error:", e);
+    }
+
+    const userDocRef = doc(db, 'users', userCredential.user.email);
+    const userDocSnap = await getDoc(userDocRef);
+    if (userDocSnap.exists()) {
+      const data = userDocSnap.data();
+      // Si la cuenta ya tiene un dispositivo y es diferente al actual, no dejar loguear
+      if (data.deviceId && data.deviceId !== 'pending' && data.deviceId !== currentDeviceId) {
+        await signOut(auth);
+        throw new Error("device-mismatch");
+      }
+    }
+
+    return userCredential;
   }
 
   function logOut() {

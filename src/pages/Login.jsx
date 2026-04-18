@@ -54,6 +54,7 @@ const Login = () => {
   }, []);
 
   const translateError = (message) => {
+    if (message.includes('device-mismatch')) return 'Esta cuenta ya está registrada en otro dispositivo. No puedes ingresar.';
     if (message.includes('email-already-in-use')) return 'Este correo ya está registrado. Intenta iniciar sesión.';
     if (message.includes('wrong-password') || message.includes('invalid-credential')) return 'Correo o contraseña incorrectos.';
     if (message.includes('invalid-email')) return 'El formato del correo electrónico no es válido.';
