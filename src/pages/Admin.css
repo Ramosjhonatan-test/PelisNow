@@ -1205,3 +1205,141 @@
     transform: translateY(-1px);
 }
 
+
+/* Versions Tab Styles */
+.admin-versions-tab {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.admin-versions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.version-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.version-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.version-card.is-blocked {
+    background: rgba(229, 9, 20, 0.03);
+    border-color: rgba(229, 9, 20, 0.2);
+}
+
+.version-info-main {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.v-icon {
+    font-size: 2rem;
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.v-details h3 {
+    margin: 0 0 5px 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.v-date {
+    display: block;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.version-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.toggle-v-btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 150px;
+    border: 1px solid transparent;
+}
+
+.toggle-v-btn.btn-block {
+    background: rgba(229, 9, 20, 0.1);
+    color: #e50914;
+    border-color: rgba(229, 9, 20, 0.2);
+}
+
+.toggle-v-btn.btn-block:hover {
+    background: #e50914;
+    color: white;
+}
+
+.toggle-v-btn.btn-unblock {
+    background: rgba(45, 201, 110, 0.1);
+    color: #2dc96e;
+    border-color: rgba(45, 201, 110, 0.2);
+}
+
+.toggle-v-btn.btn-unblock:hover {
+    background: #2dc96e;
+    color: white;
+}
+
+.delete-v-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.4);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.delete-v-btn:hover {
+    background: rgba(229, 9, 20, 0.2);
+    color: #e50914;
+}
+
+@media (max-width: 768px) {
+    .version-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+    }
+    
+    .version-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .toggle-v-btn {
+        flex: 1;
+    }
+}

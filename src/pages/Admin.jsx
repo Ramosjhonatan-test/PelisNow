@@ -3,7 +3,7 @@ import { db, auth, firebaseConfig } from '../firebase';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { collection, addDoc, getDocs, deleteDoc, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { sendPasswordResetEmail, EmailAuthProvider, reauthenticateWithCredential, updatePassword, getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { FaPlus, FaTrash, FaImage, FaFilm, FaInfoCircle, FaEye, FaSearch, FaLink, FaEdit, FaSave, FaTimes, FaHome, FaArrowUp, FaArrowDown, FaCheckCircle, FaTimesCircle, FaTags, FaLanguage, FaCog, FaCalendarAlt, FaPowerOff, FaKey, FaClock, FaUserShield, FaLock, FaMobileAlt } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaImage, FaFilm, FaInfoCircle, FaEye, FaSearch, FaLink, FaEdit, FaSave, FaTimes, FaHome, FaArrowUp, FaArrowDown, FaCheckCircle, FaTimesCircle, FaTags, FaLanguage, FaCog, FaCalendarAlt, FaPowerOff, FaKey, FaClock, FaUserShield, FaLock, FaMobileAlt, FaListAlt } from 'react-icons/fa';
 import { useNotifications } from '../context/NotificationContext';
 import './Admin.css';
 
@@ -47,6 +47,10 @@ const Admin = () => {
   const [newSectionLabel, setNewSectionLabel] = useState('');
   const [newSectionId, setNewSectionId] = useState('');
   const [viewingDeviceUser, setViewingDeviceUser] = useState(null);
+  
+  // App Version States
+  const [appVersions, setAppVersions] = useState([]);
+  const [loadingVersions, setLoadingVersions] = useState(false);
 
   const defaultSections = [
     { id: 'history', label: 'Continuar Viendo', visible: true, order: 1, type: 'system' },
@@ -112,11 +116,34 @@ const Admin = () => {
     } catch (err) { console.error(err); }
   };
 
+  const fetchVersions = async () => {
+    setLoadingVersions(true);
+    try {
+      const q = collection(db, 'app_versions');
+      const unsub = onSnapshot(q, (snap) => {
+        setAppVersions(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setLoadingVersions(false);
+      }, (err) => {
+        console.error("Firestore Error:", err);
+        addNotification('Error', 'No se pudieron cargar las versiones.', 'error');
+        setLoadingVersions(false);
+      });
+      return unsub;
+    } catch (err) {
+      console.error(err);
+      setLoadingVersions(false);
+    }
+  };
+
   useEffect(() => {
     fetchExclusive();
     fetchHomeConfig();
     fetchAppConfig();
     fetchUsers();
+    const unsubVersions = fetchVersions();
+    return () => {
+      unsubVersions?.then(u => u && u());
+    };
   }, []);
 
   const fetchFromTMDB = async () => {
@@ -299,7 +326,28 @@ const Admin = () => {
     }
   };
 
-  // Homepage Methods (Same as before but simplified)
+  const toggleVersionBlock = async (vId, currentStatus) => {
+    try {
+      await setDoc(doc(db, 'app_versions', vId), { isBlocked: !currentStatus }, { merge: true });
+      addNotification('Versión Actualizada', `La versión ${vId} ha sido ${!currentStatus ? 'Bloqueada' : 'Activada'}`, 'info');
+    } catch (err) {
+      console.error(err);
+      addNotification('Error', 'No se pudo actualizar el estado de la versión.', 'error');
+    }
+  };
+
+  const deleteVersionRecord = async (vId) => {
+    if (window.confirm(`¿Eliminar el registro de la versión ${vId}? Se volverá a registrar si alguien la abre.`)) {
+      try {
+        await deleteDoc(doc(db, 'app_versions', vId));
+        addNotification('Registro Eliminado', 'Se ha removido el registro de la versión.', 'success');
+      } catch (err) {
+        console.error(err);
+        addNotification('Error', 'No se pudo eliminar el registro.', 'error');
+      }
+    }
+  };
+
   const toggleAppLock = async () => {
     const newState = !isLocked;
     setIsUpdatingLock(true);
@@ -346,6 +394,7 @@ const Admin = () => {
         <div className="admin-tabs">
           <button className={activeTab === 'movies' ? 'active' : ''} onClick={() => setActiveTab('movies')}><FaFilm /> Películas</button>
           <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}><FaCheckCircle /> Usuarios</button>
+          <button className={activeTab === 'versions' ? 'active' : ''} onClick={() => setActiveTab('versions')}><FaListAlt /> Versiones</button>
           <button className={activeTab === 'homepage' ? 'active' : ''} onClick={() => setActiveTab('homepage')}><FaHome /> Portada</button>
           <button className={activeTab === 'config' ? 'active' : ''} onClick={() => setActiveTab('config')}><FaCog /> Configuración</button>
         </div>
@@ -411,6 +460,61 @@ const Admin = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'versions' && (
+        <div className="admin-versions-tab animate-fade-in">
+          <div className="admin-section-card glass highlight-card">
+            <div className="section-header-row">
+              <h2><FaListAlt className="accent-icon" /> Control de Versiones del APK</h2>
+              <span className="badge-beta">Seguridad Local</span>
+            </div>
+
+            <p className="admin-note">
+              Cada vez que subas una nueva versión con un nuevo <code>versionName</code>, aparecerá aquí automáticamente.
+              Puedes "Desactivar" versiones antiguas para forzar a los usuarios a descargar la más reciente.
+            </p>
+
+            <div className="admin-versions-list">
+              {loadingVersions ? (
+                <div className="loading-spinner">Cargando versiones...</div>
+              ) : (
+                appVersions.map(v => (
+                  <div key={v.id} className={`version-card ${v.isBlocked ? 'is-blocked' : 'is-active'}`}>
+                    <div className="version-info-main">
+                      <div className="v-icon">🚀</div>
+                      <div className="v-details">
+                        <h3>Versión {v.versionName}</h3>
+                        <span className="v-date">Registrada: {v.createdAt ? new Date(v.createdAt).toLocaleDateString() : 'N/A'}</span>
+                        <span className="v-date">Vistazo: {v.lastSeen ? new Date(v.lastSeen).toLocaleString() : 'Nunca'}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="version-actions">
+                      <div className="v-status">
+                        <span className={`status-pill ${v.isBlocked ? 'blocked' : 'active'}`}>
+                          {v.isBlocked ? '⛔ Bloqueada' : '✅ Activa'}
+                        </span>
+                      </div>
+                      <button 
+                        className={`toggle-v-btn ${v.isBlocked ? 'btn-unblock' : 'btn-block'}`}
+                        onClick={() => toggleVersionBlock(v.id, v.isBlocked)}
+                      >
+                        {v.isBlocked ? 'Activar Versión' : 'Desactivar Versión'}
+                      </button>
+                      <button className="delete-v-btn" onClick={() => deleteVersionRecord(v.id)}>
+                        <FaTrash />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+              {appVersions.length === 0 && !loadingVersions && (
+                <div className="no-data">No hay versiones registradas. Instala la app para ver la primera.</div>
+              )}
             </div>
           </div>
         </div>

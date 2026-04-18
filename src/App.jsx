@@ -17,7 +17,7 @@ import { UserAuth } from './context/AuthContext';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
 import NotificationToast from './components/NotificationToast';
 import { db } from './firebase';
-import { doc, onSnapshot, collection, query, orderBy, getDocs, deleteDoc, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, orderBy, getDocs, deleteDoc, setDoc, getDoc } from 'firebase/firestore';
 
 function AppContent() {
   const { user } = UserAuth();
@@ -30,6 +30,9 @@ function AppContent() {
   const [currentDeviceId, setCurrentDeviceId] = useState(null);
   const [deviceInfo, setDeviceInfo] = useState({ model: 'N/A', manufacturer: 'N/A' });
   const [isDeviceUnauthorized, setIsDeviceUnauthorized] = useState(false);
+  const [currentVersion, setCurrentVersion] = useState('...');
+  const [isVersionBlocked, setIsVersionBlocked] = useState(false);
+  const [loadingVersion, setLoadingVersion] = useState(true);
 
   // Fetch unique Device ID on mount (Native Only)
   useEffect(() => {
@@ -50,6 +53,57 @@ function AppContent() {
     };
     fetchId();
   }, []);
+
+  // 1. VERSION CONTROL (Read & Write)
+  useEffect(() => {
+    let unsubSnapshot;
+    let safetyTimer;
+
+    const startVersionSync = async () => {
+      try {
+        const info = await CapApp.getInfo();
+        const vName = info.version || 'web-dev';
+        setCurrentVersion(vName);
+
+        const vRef = doc(db, 'app_versions', vName);
+
+        // --- STEP A: Listado (Read) ---
+        // Intentamos escuchar el estado. Si falla (por permisos), el loading se quita para dejar loguear.
+        unsubSnapshot = onSnapshot(vRef, (snap) => {
+          if (snap.exists()) {
+            setIsVersionBlocked(snap.data().isBlocked === true);
+          }
+          setLoadingVersion(false);
+        }, (err) => {
+          console.error("Version check error (guest):", err);
+          setLoadingVersion(false); 
+        });
+
+        // --- STEP B: Registro (Write) ---
+        // Solo intentamos escribir si hay un usuario logueado
+        if (user && vName !== '...') {
+          await setDoc(vRef, {
+            versionName: vName,
+            lastSeen: new Date().toISOString(),
+            platform: Capacitor.getPlatform(),
+            createdAt: new Date().toISOString()
+          }, { merge: true });
+        }
+
+        safetyTimer = setTimeout(() => setLoadingVersion(false), 6000);
+      } catch (e) {
+        console.error("Version sync master error:", e);
+        setLoadingVersion(false);
+      }
+    };
+
+    startVersionSync();
+
+    return () => {
+      unsubSnapshot && unsubSnapshot();
+      safetyTimer && clearTimeout(safetyTimer);
+    };
+  }, [user]); // RE-EJECUTAR cuando el usuario cambie (loguee)
 
   // Listener for user document (Status & Device check)
   useEffect(() => {
@@ -211,7 +265,7 @@ function AppContent() {
     const checkGuestTime = () => {
       const elapsed = Date.now() - parseInt(startTime, 10);
       //limite de tiempo de prueba
-      const limitMs = 1 * 60 * 1000; // 10 minutes
+      const limitMs = 2 * 60 * 1000; // 10 minutes
       if (elapsed > limitMs) {
         setIsGuestExpired(true);
       }
@@ -221,6 +275,11 @@ function AppContent() {
     const guestInterval = setInterval(checkGuestTime, 10000); // Check every 10 secs
     return () => clearInterval(guestInterval);
   }, [user]);
+
+  // CAPA DE SEGURIDAD: Bloquear hasta que la versión esté verificada
+  if (loadingVersion) {
+    return <SplashScreen />;
+  }
 
   // DEVICE UNAUTHORIZED SCREEN
   if (isDeviceUnauthorized && location.pathname !== '/login') {
@@ -279,7 +338,8 @@ function AppContent() {
   }
 
   // UPDATE REQUIRED SCREEN
-  if (appConfig?.isUpdateForced && location.pathname !== '/login') {
+  const isGlobalUpdateForced = appConfig?.isUpdateForced === true;
+  if ((isGlobalUpdateForced || isVersionBlocked) && location.pathname !== '/login') {
     return (
       <div className="expired-screen animate-fade-in" style={{
         height: '100vh',
@@ -332,7 +392,7 @@ function AppContent() {
         </div>
 
         <p style={{ fontSize: '12px', color: '#555' }}>
-          PelisNow v2.0 - Sistema de Control de Versiones
+          ZenPlus v{currentVersion} - Sistema de Control de Versiones
         </p>
       </div>
     );
