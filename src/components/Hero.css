@@ -94,9 +94,11 @@
   justify-content: center;
 }
 
-.cinehax-btn:hover {
+.cinehax-btn:hover,
+.cinehax-btn:focus {
   background-color: #4376f9;
   box-shadow: 0 8px 25px rgba(67, 118, 249, 0.4);
+  outline: none;
 }
 
 .hero-title {
@@ -146,11 +148,13 @@
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-.btn-play:hover {
+.btn-play:hover,
+.btn-play:focus {
   transform: translateY(-3px);
   background-color: var(--accent-color);
   color: white;
   box-shadow: 0 8px 25px var(--accent-glow);
+  outline: none;
 }
 
 .btn-info {
@@ -167,8 +171,11 @@
   gap: 10px;
 }
 
-.btn-info:hover {
+.btn-info:hover,
+.btn-info:focus {
   background-color: rgba(109, 109, 110, 0.9);
+  outline: none;
+  transform: translateY(-2px);
 }
 
 .hero-indicators {

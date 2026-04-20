@@ -22,8 +22,9 @@ import { db } from './firebase';
 import { doc, onSnapshot, collection, query, orderBy, getDocs, deleteDoc, setDoc, getDoc } from 'firebase/firestore';
 
 function AppContent() {
-  const { user } = UserAuth();
+  const { user, userDoc: authUserDoc } = UserAuth();
   const { addNotification } = useNotifications();
+  const isAdmin = user?.email === 'danielacopana@gmail.com' || authUserDoc?.isAdmin === true;
   const navigate = useNavigate();
   const location = useLocation();
   const [appConfig, setAppConfig] = useState(() => {
@@ -350,9 +351,10 @@ function AppContent() {
     );
   }
 
-  // UPDATE REQUIRED SCREEN
+  // UPDATE REQUIRED SCREEN (Only blocks on Native APK, Admin is exempt)
   const isGlobalUpdateForced = appConfig?.isUpdateForced === true;
-  if ((isGlobalUpdateForced || isVersionBlocked) && location.pathname !== '/login') {
+  const isNative = Capacitor.isNativePlatform();
+  if (isNative && (isGlobalUpdateForced || isVersionBlocked) && !isAdmin && location.pathname !== '/login') {
     return (
       <div className="expired-screen animate-fade-in" style={{
         height: '100vh',
@@ -395,10 +397,70 @@ function AppContent() {
           <p style={{ fontSize: '18px', color: '#e0e0e0', margin: '0 0 25px 0', lineHeight: '1.6' }}>
             {appConfig.updateForceMsg || 'Hay una actualización importante lista para ti.'}
           </p>
+
+          {appConfig.updateLink && (
+            <>
+              <button 
+                onClick={(e) => {
+                  navigator.clipboard.writeText(appConfig.updateLink);
+                  const btn = e.currentTarget;
+                  const originalText = btn.innerHTML;
+                  btn.innerHTML = '<span>✅</span> ¡Enlace Copiado!';
+                  btn.style.background = '#27ae60';
+                  addNotification('Enlace Copiado', 'Pégalo en tu navegador Chrome.', 'success');
+                  setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.background = 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)';
+                  }, 3000);
+                }}
+                style={{
+                  width: '100%',
+                  background: 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)',
+                  color: 'white',
+                  padding: '16px 20px',
+                  borderRadius: '16px',
+                  border: 'none',
+                  fontWeight: 'bold',
+                  fontSize: '17px',
+                  cursor: 'pointer',
+                  marginBottom: '10px',
+                  boxShadow: '0 10px 25px rgba(52, 152, 219, 0.3)',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px'
+                }}
+              >
+                <span>📋</span> Copiar Enlace de Descarga
+              </button>
+
+              <div style={{
+                width: '100%',
+                background: 'rgba(255, 255, 255, 0.05)',
+                padding: '12px',
+                borderRadius: '12px',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                marginBottom: '25px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                fontSize: '12px',
+                color: '#666',
+                textAlign: 'center'
+              }}>
+                {appConfig.updateLink}
+              </div>
+            </>
+          )}
           
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
-            <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#888' }}>Solicita el APK al administrador:</p>
-            <p style={{ margin: '0', fontSize: '22px', fontWeight: 'bold', color: '#25D366' }}>
+            <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#888', lineHeight: '1.4' }}>
+              {appConfig.updateLink 
+                ? 'Si el botón no abre, copia el enlace y pégalo manualmente en Chrome:' 
+                : 'Solicita el APK al administrador:'}
+            </p>
+            <p style={{ margin: '0', fontSize: '20px', fontWeight: 'bold', color: '#25D366' }}>
               WhatsApp: +591 73225724
             </p>
           </div>

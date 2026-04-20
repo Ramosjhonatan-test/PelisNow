@@ -30,7 +30,7 @@ const Discover = () => {
   const [searchParams] = useSearchParams();
   const [type, setType] = useState(searchParams.get('type') || 'movie');
   const [genre, setGenre] = useState(searchParams.get('genre') || '');
-  const [year, setYear] = useState('');
+  const [year, setYear] = useState(searchParams.get('year') || '');
   
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);

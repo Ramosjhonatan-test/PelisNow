@@ -9,7 +9,10 @@
   border: 1px solid transparent;
 }
 
-.movie-card:hover {
+.movie-card:hover,
+.movie-card:focus,
+.movie-card:focus-visible {
+  outline: none;
   transform: scale(1.08) translateY(-5px);
   z-index: 10;
   border: 1px solid var(--glass-border);
@@ -95,7 +98,8 @@
   transition: all 0.3s ease;
 }
 
-.movie-card:hover .card-badge {
+.movie-card:hover .card-badge,
+.movie-card:focus .card-badge {
   background: var(--accent-color);
   transform: translateY(-2px);
   box-shadow: 0 5px 15px var(--accent-glow);

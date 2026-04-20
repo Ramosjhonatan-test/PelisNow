@@ -71,8 +71,8 @@ const Login = () => {
     try {
       // Set persistence to LOCAL for mobile experience (persists on app close)
       await setPersistence(auth, browserLocalPersistence);
-      
-      // Save or clear email from localStorage
+     // Save or clear email from localStorage
+       
       if (rememberMe) {
         localStorage.setItem('zenplus_remembered_email', email);
       } else {

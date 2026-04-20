@@ -4,7 +4,7 @@ import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import MovieCard from './MovieCard';
 import './MovieRow.css';
 
-const MovieRow = ({ title, movies = [], isTop10 = false }) => {
+const MovieRow = ({ title, movies = [], isTop10 = false, discoverUrl = "/discover" }) => {
   const rowRef = useRef(null);
   const [showArrows, setShowArrows] = useState(false);
   const safeMovies = Array.isArray(movies) ? movies : [];
@@ -26,7 +26,7 @@ const MovieRow = ({ title, movies = [], isTop10 = false }) => {
       <div className="row-header cinehax-row-header">
         <h2 className='row-title'>{title}</h2>
         <div className="row-divider"></div>
-        <Link to="/discover" className="see-all-btn cinehax-see-all">Ver todo</Link>
+        <Link to={discoverUrl} className="see-all-btn cinehax-see-all">Ver todo</Link>
       </div>
 
       <div className="row-container-wrapper">

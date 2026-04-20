@@ -229,10 +229,10 @@ const Navbar = () => {
                   <div className="search-loading">Buscando...</div>
                 ) : searchResults.length > 0 ? (
                   <div className="dropdown-results-list">
-                    {searchResults.map((result) => (
+                    {searchResults.filter(r => r.media_type !== 'person').map((result) => (
                       <Link 
                         key={result.id} 
-                        to={`/movie/${result.id}`} 
+                        to={`/${result.media_type === 'tv' ? 'tv' : 'movie'}/${result.id}`} 
                         className="dropdown-item"
                         onClick={() => {
                           addToHistory(result.title || result.name);

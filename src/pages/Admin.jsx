@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { db, auth, firebaseConfig } from '../firebase';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { collection, addDoc, getDocs, deleteDoc, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
-import { sendPasswordResetEmail, EmailAuthProvider, reauthenticateWithCredential, updatePassword, getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { FaPlus, FaTrash, FaImage, FaFilm, FaInfoCircle, FaEye, FaSearch, FaLink, FaEdit, FaSave, FaTimes, FaHome, FaArrowUp, FaArrowDown, FaCheckCircle, FaTimesCircle, FaTags, FaLanguage, FaCog, FaCalendarAlt, FaPowerOff, FaKey, FaClock, FaUserShield, FaLock, FaMobileAlt, FaListAlt } from 'react-icons/fa';
+import { sendPasswordResetEmail, EmailAuthProvider, reauthenticateWithCredential, updatePassword, getAuth, signInWithEmailAndPassword, deleteUser } from 'firebase/auth';
+import { FaPlus, FaTrash, FaImage, FaFilm, FaInfoCircle, FaEye, FaSearch, FaLink, FaEdit, FaSave, FaTimes, FaHome, FaArrowUp, FaArrowDown, FaCheckCircle, FaTimesCircle, FaTags, FaLanguage, FaCog, FaCalendarAlt, FaPowerOff, FaKey, FaClock, FaUserShield, FaLock, FaMobileAlt, FaListAlt, FaPlusCircle } from 'react-icons/fa';
 import { useNotifications } from '../context/NotificationContext';
 import './Admin.css';
 
@@ -40,6 +40,14 @@ const Admin = () => {
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isUpdateForced, setIsUpdateForced] = useState(false);
   const [updateForceMsg, setUpdateForceMsg] = useState('Hay una nueva versión de PelisNow disponible. Contacta al administrador para obtenerla.');
+  const [updateLink, setUpdateLink] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'premium', 'active', 'expired', 'blocked'
+  const [customDaysInputs, setCustomDaysInputs] = useState({}); // { email: "45" }
+  const [announcementText, setAnnouncementText] = useState('');
+  const [isAnnouncementActive, setIsAnnouncementActive] = useState(false);
+  const [isSavingAccess, setIsSavingAccess] = useState(false);
+  const [isSavingAnnounce, setIsSavingAnnounce] = useState(false);
+  const [isSavingUpdate, setIsSavingUpdate] = useState(false);
 
   // Homepage Config States
   const [sections, setSections] = useState([]);
@@ -110,8 +118,11 @@ const Admin = () => {
           setExpiryDate(`${year}-${month}-${day}T${hours}:${minutes}`);
         }
         setIsLocked(!!snap.data().isLocked);
-        setIsUpdateForced(!!snap.data().isUpdateForced);
+         setIsUpdateForced(!!snap.data().isUpdateForced);
         if (snap.data().updateForceMsg) setUpdateForceMsg(snap.data().updateForceMsg);
+        if (snap.data().updateLink) setUpdateLink(snap.data().updateLink);
+        setIsAnnouncementActive(!!snap.data().isAnnouncementActive);
+        if (snap.data().announcementText) setAnnouncementText(snap.data().announcementText);
       }
     } catch (err) { console.error(err); }
   };
@@ -202,15 +213,55 @@ const Admin = () => {
   };
 
   const handleDeleteUser = async (userEmail) => {
-    if (window.confirm(`¿Estás seguro de eliminar al usuario ${userEmail}?`)) {
-      try {
-        await deleteDoc(doc(db, 'users', userEmail));
-        addNotification('Usuario Eliminado', 'Se ha removido el registro del usuario.', 'success');
-        fetchUsers();
-      } catch (err) {
-        console.error(err);
-        addNotification('Error', 'No se pudo eliminar al usuario.', 'error');
+    if (!window.confirm(`⚠️ ELIMINACIÓN TOTAL: ¿Estás seguro de eliminar al usuario ${userEmail}?
+
+Esta acción intentará borrarlo de Authentication y Firestore.`)) return;
+
+    let authDeleted = false;
+    let authError = null;
+
+    try {
+      // 1. Obtener datos del usuario para extraer la contraseña guardada (_pk)
+      const userDoc = await getDoc(doc(db, 'users', userEmail));
+      const userData = userDoc.data();
+      const encodedPass = userData?._pk;
+
+      if (encodedPass) {
+        let tempApp;
+        try {
+          const pass = atob(encodedPass);
+          // 2. Crear App temporal para borrar desde Authentication
+          tempApp = initializeApp(firebaseConfig, `del-${Date.now()}`);
+          const tempAuth = getAuth(tempApp);
+          
+          const userCred = await signInWithEmailAndPassword(tempAuth, userEmail, pass);
+          if (userCred.user) {
+            await deleteUser(userCred.user);
+            authDeleted = true;
+          }
+        } catch (err) {
+          console.error("Auth Deletion Error:", err);
+          authError = err.message || "Error de credenciales o permisos";
+        } finally {
+          if (tempApp) await deleteApp(tempApp);
+        }
+      } else {
+        authError = "No hay registro de contraseña (_pk) para este usuario.";
       }
+
+      // 3. Borrar el registro principal en Firestore
+      await deleteDoc(doc(db, 'users', userEmail));
+      
+      if (authDeleted) {
+        addNotification('Éxito Total', `Usuario ${userEmail} eliminado de ambos sistemas.`, 'success');
+      } else {
+        addNotification('Eliminado Parcialmente', `DB borrada, pero no se pudo borrar de Auth: ${authError}`, 'warning');
+      }
+      
+      fetchUsers();
+    } catch (err) {
+      console.error(err);
+      addNotification('Error', 'No se pudo completar la acción.', 'error');
     }
   };
 
@@ -265,18 +316,45 @@ const Admin = () => {
     }
   };
 
-  // Set account duration for a user
+  // Set account duration for a user (Additive: adds to current remaining time if any)
   const handleSetAccountDuration = async (userEmail, days) => {
     try {
-      const expiryDate = new Date();
+      // Find current user data to see if they already have an active expiry
+      const targetUser = users.find(u => u.id === userEmail);
+      const currentExpiryStr = targetUser?.accountExpiry;
+      const now = new Date();
+      
+      let baseDate = now;
+      
+      // If user has a future expiry, we add the new days starting from that date
+      if (currentExpiryStr) {
+        const currentExpiry = new Date(currentExpiryStr);
+        if (currentExpiry > now) {
+          baseDate = currentExpiry;
+        }
+      }
+
+      const expiryDate = new Date(baseDate);
       expiryDate.setDate(expiryDate.getDate() + days);
+
       await setDoc(doc(db, 'users', userEmail), { accountExpiry: expiryDate.toISOString() }, { merge: true });
+      
+      const isSubtraction = days < 0;
+      const absDays = Math.abs(days);
+
       await sendUserNotification(userEmail,
-        '📅 Suscripción Actualizada',
-        `Tu cuenta ha sido activada por ${days} días. Vence el ${expiryDate.toLocaleDateString()}.`,
-        'success'
+        isSubtraction ? '⚠️ Ajuste de suscripción' : '📅 Suscripción Actualizada',
+        isSubtraction 
+          ? `Se han removido ${absDays} días de tu cuenta. Nuevo vencimiento: ${expiryDate.toLocaleDateString()}.`
+          : `Se han sumado ${days} días a tu cuenta. Nuevo vencimiento: ${expiryDate.toLocaleDateString()}.`,
+        isSubtraction ? 'warning' : 'success'
       );
-      addNotification('Duración Asignada', `${userEmail} → ${days} días`, 'success');
+      
+      addNotification(
+        isSubtraction ? 'Días Restados' : 'Duración Sumada', 
+        `${userEmail} → ${isSubtraction ? '-' : '+'}${absDays} días. Vence: ${expiryDate.toLocaleDateString()}`, 
+        isSubtraction ? 'warning' : 'success'
+      );
       fetchUsers();
     } catch (err) {
       console.error(err);
@@ -365,26 +443,54 @@ const Admin = () => {
     setIsUpdatingLock(false);
   };
 
-  const handleSaveConfig = async () => {
-    setIsSavingConfig(true);
+  const saveAccessConfig = async () => {
+    setIsSavingAccess(true);
     try {
-      // Tomamos el valor local del input y lo convertimos a objeto Date (interpretado localmente)
       const localDate = new Date(expiryDate);
-      const isoDate = localDate.toISOString();
-
       await setDoc(doc(db, 'settings', 'app_config'), {
-        expiryDate: isoDate,
+        expiryDate: localDate.toISOString(),
         isLocked: isLocked,
-        isUpdateForced: isUpdateForced,
-        updateForceMsg: updateForceMsg,
         updatedAt: new Date().toISOString()
       }, { merge: true });
-      addNotification('Configuración Guardada', 'Se actualizó el control de acceso y alertas.', 'success');
+      addNotification('Acceso Actualizado', 'La fecha y el bloqueo se han guardado.', 'success');
     } catch (err) {
       console.error(err);
-      addNotification('Error', 'No se pudo guardar la configuración.', 'error');
+      addNotification('Error', 'No se pudo guardar el acceso.', 'error');
     }
-    setIsSavingConfig(false);
+    setIsSavingAccess(false);
+  };
+
+  const saveAnnouncementConfig = async () => {
+    setIsSavingAnnounce(true);
+    try {
+      await setDoc(doc(db, 'settings', 'app_config'), {
+        isAnnouncementActive: isAnnouncementActive,
+        announcementText: announcementText,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      addNotification('Aviso Actualizado', 'El mensaje global se ha guardado.', 'success');
+    } catch (err) {
+      console.error(err);
+      addNotification('Error', 'No se pudo guardar el aviso.', 'error');
+    }
+    setIsSavingAnnounce(false);
+  };
+
+  const saveUpdateConfig = async () => {
+    setIsSavingUpdate(true);
+    try {
+      await setDoc(doc(db, 'settings', 'app_config'), {
+        isUpdateForced: isUpdateForced,
+        updateForceMsg: updateForceMsg,
+        updateLink: updateLink,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      addNotification('Actualización Guardada', 'La alerta de versión se ha guardado.', 'success');
+    } catch (err) {
+      console.error(err);
+      addNotification('Error', 'No se pudo guardar la alerta.', 'error');
+    }
+    setIsSavingUpdate(false);
   };
 
   return (
@@ -445,9 +551,14 @@ const Admin = () => {
           <div className="admin-section-card glass list-section">
             <h2>Catálogo ({exclusiveMovies.length})</h2>
             <div className="admin-movies-grid">
-              {exclusiveMovies.map(movie => (
+              {exclusiveMovies.sort((a, b) => {
+                const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return dateB - dateA;
+              }).map((movie, index) => (
                 <div key={movie.id} className="admin-item-card">
                   <div className="img-container">
+                    <span className="item-number-badge">#{index + 1}</span>
                     <img src={movie.poster_path} alt={movie.title} />
                     <div className="admin-actions-overlay">
                       <button onClick={() => startEdit(movie)} className="action-btn edit"><FaEdit /></button>
@@ -482,10 +593,14 @@ const Admin = () => {
               {loadingVersions ? (
                 <div className="loading-spinner">Cargando versiones...</div>
               ) : (
-                appVersions.map(v => (
+                appVersions.sort((a, b) => {
+                  const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                  const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                  return dateB - dateA;
+                }).map((v, index) => (
                   <div key={v.id} className={`version-card ${v.isBlocked ? 'is-blocked' : 'is-active'}`}>
                     <div className="version-info-main">
-                      <div className="v-icon">🚀</div>
+                      <div className="v-icon">#{index + 1}</div>
                       <div className="v-details">
                         <h3>Versión {v.versionName}</h3>
                         <span className="v-date">Registrada: {v.createdAt ? new Date(v.createdAt).toLocaleDateString() : 'N/A'}</span>
@@ -532,6 +647,40 @@ const Admin = () => {
               Control total de cuentas: activa/desactiva, asigna duración, restablece contraseñas y envía notificaciones en tiempo real.
             </p>
 
+            {/* User Filters */}
+            <div className="user-filters-bar">
+              <button 
+                className={`filter-btn ${filterStatus === 'all' ? 'active' : ''}`}
+                onClick={() => setFilterStatus('all')}
+              >
+                Todos
+              </button>
+              <button 
+                className={`filter-btn ${filterStatus === 'premium' ? 'active' : ''}`}
+                onClick={() => setFilterStatus('premium')}
+              >
+                💎 VIP / ilimitados
+              </button>
+              <button 
+                className={`filter-btn ${filterStatus === 'active' ? 'active' : ''}`}
+                onClick={() => setFilterStatus('active')}
+              >
+                🟢 Activos
+              </button>
+              <button 
+                className={`filter-btn ${filterStatus === 'expired' ? 'active' : ''}`}
+                onClick={() => setFilterStatus('expired')}
+              >
+                🟡 Vencidos
+              </button>
+              <button 
+                className={`filter-btn ${filterStatus === 'blocked' ? 'active' : ''}`}
+                onClick={() => setFilterStatus('blocked')}
+              >
+                🔴 Bloqueados
+              </button>
+            </div>
+
             {/* User Search */}
             <div className="user-search-wrapper">
               <div className="user-search-box">
@@ -559,7 +708,22 @@ const Admin = () => {
                   return u.id.toLowerCase().includes(q) ||
                     (u.displayName && u.displayName.toLowerCase().includes(q)) ||
                     (u.phone && u.phone.includes(q));
-                }).map(u => {
+                }).filter(u => {
+                  const accountExpiry = u.accountExpiry ? new Date(u.accountExpiry) : null;
+                  const isAccountExpired = accountExpiry && new Date() > accountExpiry;
+                  const isBlocked = u.status === 'blocked';
+                  const isPremium = !u.accountExpiry;
+
+                  if (filterStatus === 'premium') return isPremium;
+                  if (filterStatus === 'active') return !isPremium && !isAccountExpired && !isBlocked;
+                  if (filterStatus === 'expired') return !isPremium && isAccountExpired;
+                  if (filterStatus === 'blocked') return isBlocked;
+                  return true;
+                }).sort((a, b) => {
+                  const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                  const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                  return dateB - dateA;
+                }).map((u, index) => {
                   const regDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A';
                   const isBlocked = u.status === 'blocked';
                   const accountExpiry = u.accountExpiry ? new Date(u.accountExpiry) : null;
@@ -574,7 +738,10 @@ const Admin = () => {
                           {u.photoURL ? <img src={u.photoURL} alt="" /> : <div className="avatar-placeholder">{u.id.charAt(0).toUpperCase()}</div>}
                         </div>
                         <div className="umc-info">
-                          <span className="umc-email">{u.id}</span>
+                          <span className="umc-email">
+                            <span style={{ color: '#e50914', fontWeight: 'bold', marginRight: '8px' }}>#{index + 1}</span>
+                            {u.id}
+                          </span>
                           {u.displayName && <span className="umc-name">{u.displayName}</span>}
                           {u.phone && <span className="umc-phone">📱 {u.phone}</span>}
                           <span className="umc-reg">Registrado: {regDate}</span>
@@ -612,6 +779,40 @@ const Admin = () => {
                           <button onClick={() => handleSetAccountDuration(u.id, 30)}>30 días</button>
                           <button onClick={() => handleSetAccountDuration(u.id, 90)}>3 meses</button>
                           <button onClick={() => handleSetAccountDuration(u.id, 365)}>1 año</button>
+                          
+                          <div className="custom-days-box">
+                            <input 
+                              type="number" 
+                              placeholder="Días"
+                              value={customDaysInputs[u.id] || ''}
+                              onChange={(e) => setCustomDaysInputs({ ...customDaysInputs, [u.id]: e.target.value })}
+                            />
+                            <button 
+                              onClick={() => {
+                                const days = parseInt(customDaysInputs[u.id]);
+                                if (days > 0) {
+                                  handleSetAccountDuration(u.id, days);
+                                  setCustomDaysInputs({ ...customDaysInputs, [u.id]: '' });
+                                }
+                              }}
+                              className="btn-apply-custom"
+                            >
+                              + Sumar
+                            </button>
+                            <button 
+                              onClick={() => {
+                                const days = parseInt(customDaysInputs[u.id]);
+                                if (days > 0) {
+                                  handleSetAccountDuration(u.id, -days);
+                                  setCustomDaysInputs({ ...customDaysInputs, [u.id]: '' });
+                                }
+                              }}
+                              className="btn-subtract-custom"
+                            >
+                              - Restar
+                            </button>
+                          </div>
+
                           {accountExpiry && (
                             <button className="btn-unlimited" onClick={() => handleRemoveExpiry(u.id)}>♾️ Ilimitado</button>
                           )}
@@ -739,7 +940,7 @@ const Admin = () => {
               <div className="create-inputs">
                 <select 
                   className="admin-select"
-                  value={newSectionId === '' ? '' : (['marvel', 'dc', 'anime', 'animeMovies', 'kids', 'scifi', 'asianDramas', 'top2025', 'top2024', 'horror', 'romance', 'documentaries', 'topRated', 'upcoming', 'trending', 'netflixOriginals'].includes(newSectionId) ? newSectionId : 'custom')}
+                  value={newSectionId === '' ? '' : (['marvel', 'dc', 'anime', 'animeMovies', 'kids', 'scifi', 'asianDramas', 'top2026', 'top2025', 'top2024', 'horror', 'romance', 'documentaries', 'topRated', 'upcoming', 'trending', 'netflixOriginals'].includes(newSectionId) ? newSectionId : 'custom')}
                   onChange={(e) => {
                     const val = e.target.value;
                     if (val === 'custom') {
@@ -763,6 +964,7 @@ const Admin = () => {
                     <option value="kids">Animación y Niños</option>
                     <option value="scifi">Ciencia Ficción</option>
                     <option value="asianDramas">Doramas y Asia</option>
+                    <option value="top2026">Top Estrenos 2026</option>
                     <option value="top2025">Top Estrenos 2025</option>
                     <option value="top2024">Mejores del 2024</option>
                     <option value="horror">Terror</option>
@@ -778,7 +980,7 @@ const Admin = () => {
                   </optgroup>
                 </select>
 
-                {(!['marvel', 'dc', 'anime', 'animeMovies', 'kids', 'scifi', 'asianDramas', 'top2025', 'top2024', 'horror', 'romance', 'documentaries', 'topRated', 'upcoming', 'trending', 'netflixOriginals', ''].includes(newSectionId)) && (
+                {(!['marvel', 'dc', 'anime', 'animeMovies', 'kids', 'scifi', 'asianDramas', 'top2026', 'top2025', 'top2024', 'horror', 'romance', 'documentaries', 'topRated', 'upcoming', 'trending', 'netflixOriginals', ''].includes(newSectionId)) && (
                   <input style={{marginTop: '10px'}} placeholder="ID de la sección (ej: mis_peliculas)" value={newSectionId} onChange={(e) => setNewSectionId(e.target.value.toLowerCase().replace(/\s+/g, '_'))} />
                 )}
                 
@@ -890,6 +1092,60 @@ const Admin = () => {
               </div>
             </div>
 
+            <div className="save-footer" style={{marginTop: '20px', justifyContent: 'flex-end'}}>
+              <button
+                className="submit-btn update-btn"
+                onClick={saveAccessConfig}
+                disabled={isSavingAccess}
+                style={{padding: '10px 25px', fontSize: '0.9rem'}}
+              >
+                {isSavingAccess ? 'Guardando...' : <><FaSave /> Guardar Acceso</>}
+              </button>
+            </div>
+
+            <div className="admin-divider"></div>
+
+            <div className="version-control-section">
+              <div className="section-header-row">
+                <h2><FaPlusCircle className="accent-icon" /> Aviso Global (Banner Home)</h2>
+              </div>
+              <p className="admin-note">Activa un mensaje especial que aparecerá en la parte superior de la pantalla principal para todos los usuarios.</p>
+              
+              <div className="config-grid">
+                <div className="config-item-box">
+                  <label>Estado del Aviso</label>
+                  <button
+                    className={`lock-toggle-btn ${isAnnouncementActive ? 'locked' : 'unlocked'}`}
+                    onClick={() => setIsAnnouncementActive(!isAnnouncementActive)}
+                  >
+                    <div className="toggle-circle"></div>
+                    <span>{isAnnouncementActive ? 'AVISO ACTIVO EN LA HOME' : 'AVISO DESACTIVADO'}</span>
+                  </button>
+                </div>
+                
+                <div className="config-item-box full-width">
+                  <label>Mensaje del Banner</label>
+                  <textarea
+                    className="admin-textarea"
+                    value={announcementText}
+                    onChange={(e) => setAnnouncementText(e.target.value)}
+                    placeholder="Ej: ¡Nuevo estreno disponible: Intensamente 2! Mírala ahora."
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+
+            <div className="save-footer" style={{marginTop: '20px', justifyContent: 'flex-end'}}>
+              <button
+                className="submit-btn update-btn"
+                onClick={saveAnnouncementConfig}
+                disabled={isSavingAnnounce}
+                style={{padding: '10px 25px', fontSize: '0.9rem'}}
+              >
+                {isSavingAnnounce ? 'Guardando...' : <><FaSave /> Guardar Aviso</>}
+              </button>
+            </div>
+
             <div className="admin-divider"></div>
 
             <div className="version-control-section">
@@ -919,17 +1175,30 @@ const Admin = () => {
                     placeholder="Escribe el mensaje que verán los usuarios..."
                   ></textarea>
                 </div>
-              </div>
-            </div>
 
-            <div className="save-footer">
-              <button
-                className="submit-btn publish big-btn"
-                onClick={handleSaveConfig}
-                disabled={isSavingConfig || !expiryDate}
-              >
-                {isSavingConfig ? 'Guardando...' : <><FaSave /> Actualizar Acceso Remoto</>}
-              </button>
+                <div className="config-item-box full-width">
+                  <label><FaLink /> Enlace de Descarga (Mediafire / Directo)</label>
+                  <input
+                    type="text"
+                    className="admin-date-input"
+                    value={updateLink}
+                    onChange={(e) => setUpdateLink(e.target.value)}
+                    placeholder="https://www.mediafire.com/file/..."
+                  />
+                  <p className="helper-text">Este enlace aparecerá como un botón de descarga para los usuarios bloqueados.</p>
+                </div>
+              </div>
+
+              <div className="save-footer" style={{marginTop: '20px', justifyContent: 'flex-end'}}>
+                <button
+                  className="submit-btn update-btn"
+                  onClick={saveUpdateConfig}
+                  disabled={isSavingUpdate}
+                  style={{padding: '10px 25px', fontSize: '0.9rem'}}
+                >
+                  {isSavingUpdate ? 'Guardando...' : <><FaSave /> Guardar Actualización</>}
+                </button>
+              </div>
             </div>
           </div>
         </div>

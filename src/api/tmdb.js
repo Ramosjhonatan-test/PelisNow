@@ -153,6 +153,7 @@ export const requests = {
   fetchDC: `/discover/movie?with_companies=128064|429|9993&sort_by=popularity.desc`,
   fetchSciFi: `/discover/movie?with_genres=878&sort_by=popularity.desc`,
   fetchAsianDramas: `/discover/tv?with_original_language=ko&sort_by=popularity.desc`,
+  fetchTop2026: `/discover/movie?primary_release_year=2026&sort_by=popularity.desc`,
   fetchTop2025: `/discover/movie?primary_release_year=2025&sort_by=popularity.desc`,
   fetchTop2024: `/discover/movie?primary_release_year=2024&sort_by=popularity.desc`,
   fetchAnime: `/discover/tv?with_genres=16&with_original_language=ja&sort_by=popularity.desc`,
